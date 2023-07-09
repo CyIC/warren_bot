@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import discord
 
-import utilities
+from warrenBot import utilities as utils
 
 YRS_LOOKBACK = 5
 float_formatter = "{:0.2f}".format
@@ -27,13 +27,13 @@ async def send_message(msg: str, channel):
 
 # def get_finance_data(ticker):
 #     # retrieve data from alphavantage
-#     income_statement_json = utilities.get_alphavantage_data('INCOME_STATEMENT', ticker, KEY)
-#     balance_sheet_json = utilities.get_alphavantage_data('BALANCE_SHEET', ticker, KEY)
-#     stock_price_json = utilities.get_alphavantage_data('TIME_SERIES_DAILY_ADJUSTED', ticker, KEY)
-#     monthly_company_price_json = utilities.get_alphavantage_data('TIME_SERIES_MONTHLY_ADJUSTED', ticker, KEY)
+#     income_statement_json = utils.get_alphavantage_data('INCOME_STATEMENT', ticker, KEY)
+#     balance_sheet_json = utils.get_alphavantage_data('BALANCE_SHEET', ticker, KEY)
+#     stock_price_json = utils.get_alphavantage_data('TIME_SERIES_DAILY_ADJUSTED', ticker, KEY)
+#     monthly_company_price_json = utils.get_alphavantage_data('TIME_SERIES_MONTHLY_ADJUSTED', ticker, KEY)
 #     # Retrieve yearly company info
-#     company_data = utilities.process_alphavantage_annual_company_info(income_statement_json, balance_sheet_json)
-#     quarterly_revenue = utilities.quarterly_revenue(income_statement_json)
+#     company_data = utils.process_alphavantage_annual_company_info(income_statement_json, balance_sheet_json)
+#     quarterly_revenue = utils.quarterly_revenue(income_statement_json)
 #     # Retrieve daily Stock Prices
 
 
@@ -108,8 +108,8 @@ async def record_of_stock(message,
                           ):
     await message.channel.send("\n**Record of Stock**")
     STOCK_TICKER = company_data['ticker'].unique().tolist()[0]
-    company_prices = utilities.process_alphavantage_company_prices(stock_price_json)
-    quarterly_eps = utilities.quarterly_eps(income_statement_json, company_data['shares_outstanding'])
+    company_prices = utils.process_alphavantage_company_prices(stock_price_json)
+    quarterly_eps = utils.quarterly_eps(income_statement_json, company_data['shares_outstanding'])
     # Past Sales Records
     sales_per_year = company_data.reset_index().pivot(index='date',
                                                       columns='ticker',
@@ -132,7 +132,7 @@ async def record_of_stock(message,
     # get current eps
     present_eps = float(quarterly_eps[0])
     # get monthly prices
-    monthly_company_price = utilities.process_alphavantage_company_prices(monthly_company_price_json)
+    monthly_company_price = utils.process_alphavantage_company_prices(monthly_company_price_json)
     await message.channel.send("Present Price: {:.3f}".format(present_price))
     await message.channel.send("Present EPS: {:.3f}".format(present_eps))
 
@@ -204,13 +204,11 @@ async def trend(message,
                 monthly_company_price_json):
     ticker = company_data['ticker'].unique().tolist()[0]
     await message.channel.send("\n**Trends**")
-    quarterly_revenue = utilities.quarterly_revenue(income_statement_json)
-    quarterly_eps = utilities.quarterly_eps(income_statement_json, company_data['shares_outstanding'])
-    monthly_company_price = utilities.process_alphavantage_company_prices(monthly_company_price_json)
-    # Quarterly Revenue, Quartertly EPS
-    monthly_company_price_json = utilities.get_alphavantage_data('TIME_SERIES_MONTHLY_ADJUSTED',
-                                                                 ticker,
-                                                                 KEY)
+    quarterly_revenue = utils.quarterly_revenue(income_statement_json)
+    quarterly_eps = utils.quarterly_eps(income_statement_json, company_data['shares_outstanding'])
+    monthly_company_price = utils.process_alphavantage_company_prices(monthly_company_price_json)
+    # Quarterly Revenue, Quarterly EPS
+
     fig1, revenue_fig = plt.subplots()
     revenue_fig.set_xlabel('Date')
     revenue_fig.set_ylabel('Revenue', color = 'tab:red')
@@ -462,8 +460,8 @@ async def revenue_growth(message,
                          cash_flow_json):
     await message.channel.send('\n**Revenue Growth**')
     eps_per_year = company_data.reset_index().pivot(index='date', columns='ticker', values='eps')
-    quarterly_revenue = utilities.quarterly_revenue(income_statement_json)
-    company_prices = utilities.process_alphavantage_company_prices(stock_price_json)
+    quarterly_revenue = utils.quarterly_revenue(income_statement_json)
+    company_prices = utils.process_alphavantage_company_prices(stock_price_json)
     STOCK_TICKER = company_data['ticker'].unique().tolist()[0]
     cash_flow = pd.DataFrame(cash_flow_json['annualReports']).set_index('fiscalDateEnding').reindex()
     try:
