@@ -76,7 +76,7 @@ def shift_returns(returns, shift_n):
     return returns.shift(shift_n)
 
 
-def get_alphavantage_data(function: str, symbol: str, key: str, outputsize: str = 'compact'):
+async def get_alphavantage_data(function: str, symbol: str, key: str, outputsize: str = 'compact'):
     import time
     """make https API call to Alphavantage
     https://www.alphavantage.co/documentation
@@ -94,7 +94,7 @@ def get_alphavantage_data(function: str, symbol: str, key: str, outputsize: str 
                                                                                                                            outputsize=outputsize)
     r = requests.get(url).json()
     if r.get('Note') is not None:
-        sleep(60)
+        await sleep(60)
         r = requests.get(url).json()
     return r
 
@@ -376,26 +376,6 @@ def compute_log_returns(prices):
     """
 
     return np.log(prices/prices.shift(1))
-
-
-def shift_returns(returns, shift_n):
-    """
-    Generate shifted returns
-
-    Parameters
-    ----------
-    returns : DataFrame
-        Returns for each ticker and date
-    shift_n : int
-        Number of periods to move, can be positive or negative
-
-    Returns
-    -------
-    shifted_returns : DataFrame
-        Shifted returns for each ticker and date
-    """
-
-    return returns.shift(shift_n)
 
 
 def get_top_n(prev_returns, top_n):
