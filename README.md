@@ -22,5 +22,35 @@ instructions. See [development](README.md#development) for notes on how to deplo
 ├-- README.md                               # This file
 ├-- requirements.txt                        # Basic pip requirements file
 └-- tox.ini                                 # configuration file for testing via tox
-
 ```
+
+## Deployment
+
+## Built With
+
+* [Python3.11](https://www.python.org/downloads/release/python-3110/)
+* [Bump2Version](https://github.com/c4urself/bump2version)
+* [Pandas](https://pandas.pydata.org/)
+
+## Contributing
+
+Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for details on our code of conduct, installing, developing, and the 
+process for submitting pull requests to us.
+
+## Versioning
+
+We use [SemVer](http://semver.org/) for versioning. For the versions available, see the 
+[tags on this repository](https://gitlab.com/dunns-valve-testers/report_generator/-/tags). 
+
+## Authors
+
+See the list of [contributors](./humans.txt) who participated in this project.
+
+## License
+
+This project uses libraries and software listed in the [Built With](README.md#built-with) section. See the 
+[LICENSE.md](LICENSE.md) file for details.
+
+## Acknowledgments
+
+* Lance James and his Hal DiscordBot for the idea and initial structure.
