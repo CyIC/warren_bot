@@ -5,14 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project 
 adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+    * Add Python build to Github actions
+
+### Changed
+    * Updated README
+    * Rename LICENSE to LICENSE.md for clarity
+    * Update bumpversion to remove tag signing for Github actions automation
+    * Update Requirements to remove unneeded packages
+    * Fix CHANGELOG
+
+
+### Fixed
+
+### Deprecated
+
+### Removed
+
+### Security
+
 ## [0.0.2] - 2023-07-19
 
 ### Added
+    * Add initial Stock analysis function
+    * Add initial portfolio analysis function
+    * Add initial Alphavantage functionality
+    * Add Quant analysis utilities
+    * Add general utilities
+    * Add CodeQL check to Github Actions
 
 ### Changed
 
 ### Fixed
-    * Fix image resize bug that rendered images unreadable
 
 ### Deprecated
 
