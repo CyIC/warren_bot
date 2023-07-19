@@ -12,8 +12,8 @@ name = "warren_bot"
 version = "0.0.2"
 description = "Investment Club chatbot"
 readme = "README.md"
-requires-python = "~=3.11"
-license = {file = "LICENSE"}
+requires-python = "~=3.10"
+license = {file = "LICENSE.md"}
 authors = [
     {name = "J.A. Simmons V", email = "simmonsj@jasimmonsv.com"},
 ]
@@ -21,6 +21,7 @@ authors = [
 classifiers=[
     'Programming Language :: Python',
     'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: 3.11',
     'Development Status :: 2 - Pre-Alpha',
     'Operating System :: OS Independent',
