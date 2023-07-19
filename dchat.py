@@ -1,18 +1,21 @@
-import asyncio
+# -*- coding: utf-8 -*-
+# pylint: disable=C0116, W0511
+"""Discord chatbot entrypoint."""
 import configparser
 import discord
 import re
+import logging
 
-from warrenBot import utilities as utils
-from warrenBot import stock_report
-from warrenBot import club_analysis
+from warrenBot import stock_analysis
+from warrenBot import portfolio_analysis
 
 config = configparser.ConfigParser()
 config.read('bot_config.ini')
 token = config['discord']['token']
 KEY = config['alphavantage']['key']
+logger = logging.getLogger('discord')
 
-DEBUT = False
+DEBUG = False
 
 commands_help = {
     "!stock_report": "!stock_report <ticker> will return club worksheet calculations of the "
@@ -24,8 +27,6 @@ helpinfo = "Hi! I'm Warren, a bot here to help with your investment club. Press 
            "instructions. I won't know your name, so your information is secure. I'm constantly " \
            "being improved and you can trust that I'm always up to date with the latest " \
            "technologies."
-
-MAX_MESSAGE_LENGTH = 2000  # Maximum message length allowed by Discord
 
 intents = discord.Intents.default()
 intents.guild_messages = True
@@ -41,7 +42,7 @@ def divide_prompt_and_content(content: str):
     """
     # Split the content into the prompt and the content
     split_content = re.split('\s+', content, maxsplit=1)
-    print("split_content: {}".format(split_content))
+    logger.info("split_content: {}".format(split_content))
     if len(split_content) > 1:
         prompt, content = split_content[0], split_content[1:]
         return prompt, '\n'.join(content)
@@ -66,21 +67,6 @@ async def help_command(message):
     await message.reply(help_message)
     return
 
-
-async def send_message_in_chunks(channel, content):
-    """Split a long message into Discord allowed chunks.
-
-    :param channel: Discord message channel
-    :param content: Message to break into chunks
-    :return:
-    """
-    # split the message into chunks
-    chunks = [content[i:i+MAX_MESSAGE_LENGTH] for i in range(0, len(content), MAX_MESSAGE_LENGTH)]
-
-    for chunk in chunks:
-        await channel.send(chunk)  # send each chunk to the channel
-
-
 async def run_stock_report(message):
     try:
         ticker = message.content.split(" ", 1)[1]  # Get the stock ticker
@@ -88,51 +74,23 @@ async def run_stock_report(message):
     except IndexError:
         await message.reply("!stock_report requires a ticker symbol.")
         return
-
-    # Get Company Data
-    income_statement_json = utils.get_alphavantage_data('INCOME_STATEMENT',
-                                                        ticker, KEY)
-    balance_sheet_json = utils.get_alphavantage_data('BALANCE_SHEET', ticker, KEY)
-    monthly_company_price_json = utils.get_alphavantage_data('TIME_SERIES_MONTHLY_ADJUSTED',
-                                                             ticker,
-                                                             KEY)
-    company_data = utils.process_alphavantage_annual_company_info(income_statement_json,
-                                                                  balance_sheet_json)
-    cash_flow_json = utils.get_alphavantage_data('CASH_FLOW', ticker, KEY)
-    # Get company stock prices
-    stock_price_json = utils.get_alphavantage_data('TIME_SERIES_DAILY_ADJUSTED',
-                                                   ticker, KEY)
-    # Build and send report components
-    await stock_report.past_sales_records(message, company_data)
-    await stock_report.past_eps(message, company_data)
-    await stock_report.record_of_stock(message,
-                                       company_data,
-                                       stock_price_json,
-                                       income_statement_json,
-                                       monthly_company_price_json,
-                                       )
-    await stock_report.trend(message,
-                             income_statement_json,
-                             company_data,
-                             monthly_company_price_json)
-    await stock_report.cash_position(message, company_data)
-    await stock_report.revenue_growth(message,
-                                      company_data,
-                                      stock_price_json,
-                                      income_statement_json,
-                                      cash_flow_json)
-    await stock_report.earnings_growth(message, cash_flow_json)
-    await message.channel.send('Stock Report Finished!')
+    await message.add_reaction("⏳")
+    await stock_analysis.run(message, ticker)
+    await message.channel.send('\n✅__**Stock Report Finished!**__')
 
 
 async def run_club_report(message):
     """Build and deliver club report.
 
-    :param message: discord.message.Message message passed from Discord
     :return:
     """
-    await message.reply("Functionality has not been built yet.")
-    club_analysis.load_club_stocks('./personal_stocks.csv', KEY)
+    await message.add_reaction("⏳")
+    await portfolio_analysis.run('./cyic_stocks.csv', './club_info.json', KEY)
+    try:
+        await message.clear_reaction("⏳")
+    except discord.errors.Forbidden:
+        pass
+    await message.add_reaction("✅")
 
 
 @CLIENT.event
@@ -146,7 +104,7 @@ async def on_ready():
     """
     await CLIENT.change_presence(activity=discord.Activity(name='the markets.',
                                                            type=discord.ActivityType.watching))
-    print(f'We have logged in as {CLIENT.user} :: {CLIENT.application_id}')
+    logger.info(f'We have logged in as {CLIENT.user} :: {CLIENT.application_id}')
 
 
 @CLIENT.event
@@ -178,8 +136,8 @@ async def on_message(message):
 
 
 async def main():
-    # CLIENT.run(token)
-    await club_analysis.load_club_stocks('./cyic_stocks.csv', './club_info.json', KEY)
+    await portfolio_analysis.run('./cyic_stocks.csv', './club_info.json', KEY)
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    CLIENT.run(token)
+    # asyncio.run(main())

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ club_name }} Report for {{ date }}</title>
+    <style>
+         @page {
+             size: letter portrait;
+             margin: 1cm;
+             /* Height of all three frames need to equal 792pt; */
+             @frame header_frame {
+             /* Static Frame */
+                -pdf-frame-content: header_content;
+                left: 50pt;
+                width: 512pt;
+                top: 15pt;
+                height: 35pt;
+             }
+             @frame content_frame {
+             /* Content Frame */
+                left: 50pt;
+                width: 512pt;
+                top: 40pt;
+                height: 710pt;
+             }
+             @frame footer_frame {
+             /* Static Frame */
+                -pdf-frame-content:footer_content;
+                left: 50pt;
+                width: 512pt;
+                top: 750pt;
+                height: 42pt;
+             }
+         }
+
+         @page chart_template {
+            size: letter portrait;
+            margin: 1cm;
+
+            /*@frame header_frame {                                  !* Static Frame *!*/
+            /*    -pdf-frame-content: charts_header_content;*/
+            /*    left: 50pt;*/
+            /*    width: 512pt;*/
+            /*    top: 15pt;*/
+            /*    height: 35pt;*/
+            /*}*/
+
+            @frame footer_frame {                                  /* Static Frame */
+                -pdf-frame-content: footer_content;
+                left: 50pt;
+                width: 512pt;
+                top: 750pt;
+                height: 42pt;
+            }
+         }
+         html, body {
+             font-size: 12px;
+             background: #fff;
+         }
+         #header_content {
+            text-align: center;
+            margin-left: auto;
+            margin-right: auto;
+        }
+         #header_content h1{
+            text-align: center;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        #footer_content {
+            text-align: center;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        #footer_content table,
+        #footer_content td,
+        #footer_content tr {
+            border: 0px;
+        }
+        #footer_content hr {
+            width: 90% !important;
+        }
+        #footer_content table {
+            border: 0px;
+        }
+        #footer_content img {
+            zoom: 23%;
+        }
+        .logo {
+            text-align: right !important;
+            margin-left: auto;
+        }
+        .money {
+            text-align: right !important;
+            margin-left: auto;
+        }
+        .charts {
+            text-align: center;
+            border: 1px solid black;
+        }
+        #stock_comparison {
+        }
+        #stock_comparison th {
+            padding-top: 11px;
+            padding-bottom: 11px;
+            color: white;
+            background-color: grey;
+        }
+        #stock_comparison tr td {
+            padding-top: 5px;
+            padding-bottom: 5px;
+        }
+        .graph-image {
+            width: 400pt;
+        }
+        /* globals */
+        table {
+            border: 0px none;
+            width: 100%;
+            margin: auto;
+            padding-top: 3px;
+            text-align: center;
+        }
+        .table-header {
+            font-weight: bold;
+        }
+        .table-data {
+            padding-left: 5px;
+        }
+        body h1 {
+            font-size: 20px;
+            margin: 7px;
+            text-align: left;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+<!-- Content for Static Frame 'header-content' -->
+<div id="header_content">
+    <h1>{{ club_name }}- {{ date }}</h1>
+</div>
+<!-- Content for Static Frame 'footer-frame'
+xhtml2pdf requires static content to be defined before content frames -->
+<div id="footer_content">
+    <hr>
+    <table>
+        <tr>
+            <td><img src={{ logo }} alt="Company Logo"></td>
+            <td>{{ club_name }}</td>
+            <td>{{ date }}</td>
+            <td>CLUB_REPORT_{{ version }}-2.1.0</td>   <!-- Change this for html template version -->
+        </tr>
+    </table>
+</div>
+
+<!-- HTML Content -->
+<div id="stock_price_comparison">
+<h1>Stock Price Comparison</h1>
+    <table id="stock_comparison" class="charts">
+        <thead>
+            <tr>
+                <th>Stock</th>
+                <th>Cost Basis / Share</th>
+                <th>{{ last_month }}</th>
+                <th>{{ this_month }}</th>
+                <th>%Δ / last month</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for stock in stock_info %}
+        <tr>
+            <td>{{ stock.ticker }}</td>
+            <td>{{ stock.cost_basis }}</td>
+            <td>{{ stock.last_month_price }}</td>
+            <td>{{ stock.this_month_price }}</td>
+            <td>{{ stock.percent_change }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+<!-- switch page templates -->
+<pdf:nexttemplate name="chart_template" />
+<pdf:nextpage />
+<div id="stock_charts">
+    {% for chart in stock_charts %}
+    <p>
+        <img class="graph-image" src={{ chart }} alt="Stock Price Chart" />
+    </p>
+    {% endfor %}
+</div>
+<pdf:nextpage />
+<div id="portfolio_performance">
+    <h1>Portfolio Performance</h1>
+    <p>
+        <img class="graph-image" src={{ portfolio_perfomrance_chart }} alt="Portfolio Performance Chart"/>
+    </p>
+</div>
+<div id="monthly_metrics">
+    <h1>Monthly Metrics of Indeterminate Joy</h1>
+    <table>
+        <thead>
+            <tr>
+                <th></th>
+                <th>{{ last_month }}</th>
+                <th>{{ this_month }}</th>
+                <th>Δ / last month</th>
+            </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>Unit Market Value ($)</td>
+            <td>{{ club.last_month.unit_mkt }}</td>
+            <td>{{ club.this_month.unit_mkt }}</td>
+            <td>{{ club.unit_mkt_change }}</td>
+        </tr>
+        <tr>
+            <td>Total Market Value ($)</td>
+            <td>{{ club.last_month.tot_mkt_value }}</td>
+            <td>{{ club.this_month.tot_mkt_value }}</td>
+            <td>{{ club.tot_mkt_value_change}}</td>
+        </tr>
+        <tr>
+            <td>Partner Equity ($)</td>
+            <td>{{ club.last_month.equity }}</td>
+            <td>{{ club.this_month.equity }}</td>
+            <td>{{ club.equity_change }}</td>
+        </tr>
+        <tr>
+            <td>Total Units (Unit)</td>
+            <td>{{ club.last_month.units }}</td>
+            <td>{{ club.this_month.units }}</td>
+            <td>{{ club.units_change }}</td>
+        </tr>
+        <tr>
+            <td>Earnings/Unit ($)</td>
+            <td>{{ club.last_month.earnings }}</td>
+            <td>{{ club.this_month.earnings }}</td>
+            <td>{{ club.earnings_change }}</td>
+        </tr>
+        </tbody>
+    </table>
+    <br>
+    <table>
+        <tbody>
+        <tr>
+            <td>Available Capital (less 25% reserve)</td>
+            <td class="money">$ {{ avail_capital }}</td>
+        </tr>
+        <tr>
+            <td>Min. Security Investment (3% total club value)</td>
+            <td class="money">$ {{ min_investment }}</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+<div id="size_diversification"></div>
+<h1>Company Size Diversification</h1>
+<div id="industry_diversification"></div>
+<h1>Industry Diversification</h1>
+<div class="cover_page">
+    <h1>Economic Report</h1>
+</div>
+<div id="unemployment">
+    <h1>Civilian Unemployment Rate</h1>
+</div>
+<div id="econ_date">
+    <h1>Economic Data</h1>
+</div>
+<div id="commodities">
+    <h1>Commodities</h1>
+</div>
+<div id="market_reaction">
+    <h1>Market Reaction</h1>
+    <img class="graph-image" src={{ market_reaction }} alt="Market Reaction" />
+</div>
+</body>
+</html>

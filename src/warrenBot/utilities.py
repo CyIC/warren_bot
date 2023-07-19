@@ -1,8 +1,18 @@
-import pandas as pd
-import numpy as np
-from scipy import stats
-import requests
+# -*- coding: utf-8 -*-
+# pylint: disable=C0116, W0511
+"""Collection of useful utilities for warrenBot including getting data from alphavantage and processing data structures."""
+import configparser
+import datetime
+import os
+import logging
 from asyncio import sleep
+
+import pandas as pd
+import requests
+from jinja2 import Environment, select_autoescape, FileSystemLoader
+from xhtml2pdf import pisa
+
+import warrenBot
 
 color_scheme = {
     'index': '#B6B2CF',
@@ -19,15 +29,19 @@ color_scheme = {
     'shadow': 'rgba(0, 0, 0, 0.75)',
     'major_line': '#2D3ECF',
     'minor_line': '#B6B2CF',
-    'main_line': 'black'}
+    'main_line': 'black'
+}
+MAX_MESSAGE_LENGTH = 2000  # Maximum message length allowed by Discord
+logger = logging.getLogger('discord')
+logger.setLevel(logging.DEBUG)
 
-
-def generate_config():
-    return {'showLink': False, 'displayModeBar': False, 'showAxisRangeEntryBoxes': True}
+config = configparser.ConfigParser()
+config.read('bot_config.ini')
+KEY = config['alphavantage']['key']
 
 
 def prep_pipeline(filename: str, encoding: str = 'utf_8'):
-    """
+    """Prepare the analysis pipeline.
 
     :param filename: (str) full path of the csv file to import
     :param encoding: (str) different file encoding if needed
@@ -38,435 +52,266 @@ def prep_pipeline(filename: str, encoding: str = 'utf_8'):
     return data
 
 
-def compute_log_returns(prices):
-    """
-    Compute log returns for each ticker.
+async def send_message_in_chunks(channel, content):
+    """Split a long message into Discord allowed chunks.
 
-    Parameters
-    ----------
-    prices : DataFrame
-        Prices (e.g. closing stock price) for each ticker and date
-
-    Returns
-    -------
-    log_returns : DataFrame
-        Log returns for each ticker and date
-    """
-
-    return np.log(prices/prices.shift(1))
-
-
-def shift_returns(returns, shift_n):
-    """
-    Generate shifted returns
-
-    Parameters
-    ----------
-    returns : DataFrame
-        Returns for each ticker and date
-    shift_n : int
-        Number of periods to move, can be positive or negative
-
-    Returns
-    -------
-    shifted_returns : DataFrame
-        Shifted returns for each ticker and date
-    """
-
-    return returns.shift(shift_n)
-
-
-async def get_alphavantage_data(function: str, symbol: str, key: str, outputsize: str = 'compact'):
-    import time
-    """make https API call to Alphavantage
-    https://www.alphavantage.co/documentation
-
-    :param function: (str) Alphavantage function (INCOME_STATEMENT, BALANCE_SHEET, TIME_SERIES_MONTHLY_ADJUSTED,
-                     TIME_SERIES_WEEKLY_ADJUSTED, TIME_SERIES_DAILY_ADJUSTED, EARNINGS)
-    :param symbol: (str) Company stock ticker
-    :param key: (str) Alphavantage api key
-    :return: <dict> json of alphavantage data
-    """
-    function = str.upper(function)
-    url = 'https://www.alphavantage.co/query?function={funct}&symbol={symbol}&apikey={key}&outputsize={outputsize}'.format(funct=function,
-                                                                                                                           key=key,
-                                                                                                                           symbol=symbol,
-                                                                                                                           outputsize=outputsize)
-    r = requests.get(url).json()
-    if r.get('Note') is not None:
-        await sleep(60)
-        r = requests.get(url).json()
-    return r
-
-
-def resample_prices(close_prices, freq='M'):
-    """
-    Resample close prices for each ticker at specified frequency.
-
-    Parameters
-    ----------
-    close_prices : DataFrame
-        Close prices for each ticker and date
-    freq : str
-        What frequency to sample at
-        For valid freq choices, see http://pandas.pydata.org/pandas-docs/stable/timeseries.html#offset-aliases
-
-    Returns
-    -------
-    prices_resampled : DataFrame
-        Resampled prices for each ticker and date
-    """
-    return close_prices.resample(freq).last()
-
-
-def quarterly_revenue(income_statement):
-    """
-
-    :param income_statement:
+    :param channel: Discord message channel
+    :param content: Message to break into chunks
     :return:
     """
-    stock_ticker = income_statement['symbol']
-    date = []
-    ticker = []
-    revenue = []
-    # process income statement
-    count = 0
-    for year in income_statement['quarterlyReports']:
-        date.append(year['fiscalDateEnding'])
-        revenue.append(int(year['totalRevenue']))
-        count += 1
-    # convert arrays to indexed Series
-    df = pd.Series(revenue, index=pd.to_datetime(date), name='quarterly_revenue')
-    # df.index.name = 'date'
-    # df.index = pd.to_datetime(df.index)
-    return df
+    # split the message into chunks
+    if type(content) is list:
+        for msg in content:
+            chunks = [msg[i:i + MAX_MESSAGE_LENGTH] for i in range(0, len(msg), MAX_MESSAGE_LENGTH)]
 
-
-def quarterly_eps(income_statement, shares_outstanding):
-    """
-
-    :param income_statement:
-    :param shares_outstanding:
-    :return: Dataframe of quarterly EPS
-    """
-    eps = []
-    date = []
-    # process income statement
-    count = 0
-    for year in income_statement['quarterlyReports']:
-        date.append(year['fiscalDateEnding'])
-        eps.append(int(year['netIncome']) / shares_outstanding[count])
-    df = pd.Series(eps, index=pd.to_datetime(date), name='quarterly_eps')
-    # df.index = pd.to_datetime(df.index)
-    return df
-
-
-def process_alphavantage_annual_company_info(income_statement, balance_sheet):
-    """Get company fundamentals
-    Use AlphaVantage https://www.alphavantage.co/documentation/ to collect company fundamentals
-
-    :param income_statement: (str) Income Statement json of company
-    :param balance_sheet: (str) Balance Sheet json of company
-    :return: company_data - Dataframe of company info {Year, ticker, revenue, eps}, current_eps from last quarter
-                           filings
-    """
-    yrs_lookback = len(income_statement['annualReports'])
-    shares_outstanding = []
-    for year in balance_sheet['annualReports']:
-        shares_outstanding.append(int(year['commonStockSharesOutstanding']))
-    stock_ticker = income_statement['symbol']
-    # process company data
-    date = []
-    ticker = []
-    revenue = []
-    eps = []
-    short_term_investments = []
-    cash_equivalents = []
-    long_term_debt = []
-    shares_outstanding = []
-    cash_and_short_term_investments = []
-    receivables = []
-    inventory = []
-    other_assets = []
-    payable = []
-    short_term_debt = []
-    other_liabilities = []
-    current_assets = []
-    current_liabilities = []
-    count = 0
-    # grab stock_ticker
-    for x in range(0, yrs_lookback):
-        ticker.append(stock_ticker)
-    # process balance sheet
-    for year in balance_sheet['annualReports']:
-        shares_outstanding.append(pd.to_numeric(year['commonStockSharesOutstanding'], 'coerce'))
-        cash_equivalents.append(pd.to_numeric(year['cashAndCashEquivalentsAtCarryingValue'], 'coerce'))
-        short_term_investments.append(pd.to_numeric(year['shortTermInvestments'], 'coerce'))
-        cash_and_short_term_investments.append(pd.to_numeric(year['cashAndShortTermInvestments'], 'coerce'))
-        long_term_debt.append(pd.to_numeric(year['longTermDebt'], 'coerce'))
-        receivables.append(pd.to_numeric(year['currentNetReceivables'], 'coerce'))
-        inventory.append(pd.to_numeric(year['inventory'], 'coerce'))
-        other_assets.append(pd.to_numeric(year['otherCurrentAssets'], 'coerce'))
-        payable.append(pd.to_numeric(year['currentAccountsPayable'], 'coerce'))
-        current_assets.append(pd.to_numeric(year['totalCurrentAssets'], 'coerce'))
-        current_liabilities.append(pd.to_numeric(year['totalCurrentLiabilities'], 'coerce'))
-        short_term_debt.append(pd.to_numeric(year['shortTermDebt'], 'coerce'))
-        other_liabilities.append(pd.to_numeric(year['otherCurrentLiabilities'], 'coerce'))
-        count += 1
-
-    # process income statement
-    count = 0
-    for year in income_statement['annualReports']:
-        date.append(year['fiscalDateEnding'])
-        revenue.append(int(year['totalRevenue']))
-        eps.append(int(year['netIncome']) / shares_outstanding[count])
-        count += 1
-    # convert arrays to indexed Series
-    tmp_info = {
-        'ticker': pd.Series(ticker, index=date),
-        "revenue": pd.Series(revenue, index=date),
-        "eps": pd.Series(eps, index=date),
-        "shortTermInvestments": pd.Series(short_term_investments, index=date),
-        "cashEquivalents": pd.Series(cash_equivalents, index=date),
-        "longTermDebt": pd.Series(long_term_debt, index=date),
-        "shares_outstanding": pd.Series(shares_outstanding, index=date),
-        "cashAndShortTermInvestments": pd.Series(cash_and_short_term_investments, index=date),
-        "receivables": pd.Series(receivables, index=date),
-        "inventory": pd.Series(inventory, index=date),
-        "other_assets": pd.Series(other_assets, index=date),
-        "payable": pd.Series(payable, index=date),
-        "short_term_debt": pd.Series(short_term_debt, index=date),
-        "other_liabilities": pd.Series(other_liabilities, index=date),
-        "current_assets": pd.Series(current_assets, index=date),
-        "current_liabilities": pd.Series(current_liabilities, index=date),
-    }
-    company_data = pd.DataFrame(tmp_info, index=date)
-    company_data.index.name = 'date'
-    company_data.index = pd.to_datetime(company_data.index)
-    # current_eps = int(income_statement['quarterlyReports'][0]['netIncome']) / shares
-    return company_data
-
-
-def process_alphavantage_eps(data, period: str = 'annualEarnings'):
-    """
-    annualEarnings, quarterlyEarnings
-
-    :param data: (dict)
-    :param period: (str)
-    :return:
-    """
-    eps = pd.DataFrame(data[period])
-    eps = eps.set_index('fiscalDateEnding')
-    eps = eps.rename({'fiscalDateEnding': 'date'})
-    return eps
-
-
-def process_alphavantage_company_prices(data):
-    """Get company stock data from alphavantage
-    Use AlphaVantage https://www.alphavantage.co/documentation/ to collect company stock data
-
-    :param data: (Dict) JSON Time series prices from alphavantage
-    :return: Dataframe of company stock prices
-    """
-    if 'Time Series (Daily)' in data.keys():
-        function = 'TIME_SERIES_DAILY_ADJUSTED'
-        pivot = 'Time Series (Daily)'
-    elif 'Monthly Adjusted Time Series' in data.keys():
-        function = 'TIME_SERIES_MONTHLY_ADJUSTED'
-        pivot = 'Monthly Adjusted Time Series'
-    elif 'Weekly Adjusted Time Series' in data.keys():
-        function = 'TIME_SERIES_WEEKLY_ADJUSTED'
-        pivot = 'Weekly Adjusted Time Series'
+            for chunk in chunks:
+                await channel.send(chunk)  # send each chunk to the channel
     else:
-        raise KeyError
+        chunks = [content[i:i + MAX_MESSAGE_LENGTH] for i in range(0, len(content), MAX_MESSAGE_LENGTH)]
 
-    prices = pd.DataFrame(data[pivot]).T
-    prices = prices.rename(columns={'1. open': 'open',
-                                    '2. high': 'high',
-                                    '3. low': 'low',
-                                    '4. close': 'close',
-                                    '5. adjusted close': 'adjusted close',
-                                    '6. volume': 'volume',
-                                    '7. dividend amount': 'dividend amount',
-                                    '8. split coefficient': 'split coefficient'
-                                    })
-    prices.index.name = 'date'
-    prices.index = pd.to_datetime(prices.index)
-    prices['open'] = pd.to_numeric(prices['open'])
-    prices['high'] = pd.to_numeric(prices['high'])
-    prices['low'] = pd.to_numeric(prices['low'])
-    prices['close'] = pd.to_numeric(prices['close'])
-    prices['adj_close'] = pd.to_numeric(prices['adjusted close'])
-    prices['volume'] = pd.to_numeric(prices['volume'])
-    prices['dividend_amt'] = pd.to_numeric(prices['dividend amount'])
-    prices['ticker'] = data['Meta Data']['2. Symbol']
+        for chunk in chunks:
+            await channel.send(chunk)  # send each chunk to the channel
+
+
+def company_size(revenue):
+    """Determine company size by yearly revenue stream.
+
+    https://www.iclub.com/faq/Home/Article?solution_id=1208
+    Take company revenue numbers and return the company's size classification
+
+    :param revenue: Company revenue for most recent 12 months.
+
+    :return: <str> company size classification
+    """
+    # TODO check if revenue is numerical or str and work accordingly
+    if revenue < 100000000:  # $100 million
+        return 'micro'
+    elif revenue < 500000000:  # $500 million
+        return 'small'
+    elif revenue < 5000000000:  # $5 billion
+        return 'mid'
+    elif revenue < 15000000000:  # $15 billion
+        return 'large'
+    elif revenue >= 15000000000:
+        return 'mega'
+
+
+async def get_company_industry(cik):
+    """Get Industry and Sector for a given company ticker.
+
+    :param cik: <str> company SEC CIK number
+    :return: (<industry>, <sector>)
+    """
+    url = 'https://data.sec.gov/submissions/CIK{}.json'.format(fix_cik(cik))
+    headers = {'user-agent': 'Cypress Investment Club simmonsj@jasimmonsv.com',
+               }
+    r = requests.get(url, headers=headers)
+    if r.status_code != '200':
+        await sleep(15)
+        r = requests.get(url, headers=headers)
+    r = r.json()
+    return r['sicDescription']
+
+
+async def get_current_sec_10k_revenue(cik: str):
+    """Get current 10-K from SEC Edgar API.
+
+    :param cik:
+    :return:
+    """
+    url = 'https://data.sec.gov/api/xbrl/companyfacts/CIK{}.json'.format(fix_cik(cik))
+    headers = {'user-agent': 'Cypress Investment Club simmonsj@jasimmonsv.com',
+               }
+    r = requests.get(url, headers=headers)
+    if r.status_code != '200':
+        await sleep(15)
+        r = requests.get(url, headers=headers)
+    r = r.json()
+    latest_year = 0
+    for record in r['facts']['us-gaap']['Revenues']['units']['USD']:
+        if record['fy'] > latest_year and record['form'] == '10-K':
+            revenue = record['val']
+            fy = record['fy']
+    print(revenue)
+    print(fy)
+    raise AssertionError
+    return revenue
+
+
+def fix_cik(cik: str):
+    """Check for proper CIK requirements.
+
+    :param cik: <str> SEC CIK number
+    :return: proper length CIK number
+    """
+    if len(cik) == 10:
+        return cik
+    else:
+        return cik.rjust(10, "0")
+
+
+async def verify_club_data(data):
+    """Lookup CIK info: https://www.sec.gov/edgar/searchedgar/cik.
+
+    # https://data.sec.gov/submissions/CIK0000051143.json
+    # https://data.sec.gov/api/xbrl/companyfacts/CIK0000051143.json
+    # https://www.sec.gov/edgar/searchedgar/cik
+    # https://www.sec.gov/edgar/sec-api-documentation
+
+    :param data: <dict> club data json from local file
+    :return data, changed: data is a dict with relevant club data, changed is a <bool> if anything was changed
+    """
+    # TODO check club structure
+    changed = False
+    assert 'club' in data.keys()
+    assert 'name' in data['club'].keys()
+    assert 'valuation_dates' in data['club'].keys()
+    # check valuation dates
+    assert len(data['club']['valuation_dates']) > 0
+    # check club stocks
+    assert 'club_stocks' in data['club'].keys()
+    # check each club stock has verified info
+    for stock in data['club']['club_stocks'].keys():
+        cik = fix_cik(data['club']['club_stocks'][stock]["cik"])
+        industry = data['club']['club_stocks'][stock]["industry"]
+        sector = data['club']['club_stocks'][stock]["sector"]
+        size = data['club']['club_stocks'][stock]["company_size"]
+        assert cik != ''
+        if industry == '':
+            data['club']['club_stocks'][stock]["industry"] = await get_company_industry(cik)
+            changed = True
+        if sector != '':
+            pass  # TODO get company sector information
+        if size == '':
+            revenue = await get_current_sec_10k_revenue(cik)
+            size = company_size(revenue)
+            changed = True
+    return data, changed
+
+
+def convert_html_to_pdf(source_html: str, output_filename: str):
+    """Take HTML object and build a PDF document from it.
+
+    :param source_html: (str) HTML string to write to PDF file
+    :param output_filename: (str) path to pdf file
+    :return: N/A
+    """
+    # open output file for writing (truncated binary)
+    with open(output_filename, "w+b") as result_file:
+        # convert HTML to PDF
+        pisa.CreatePDF(
+            source_html,            # the HTML string to convert
+            dest=result_file)       # file handle to receive result
+
+
+def draw_club_report(filename: str,
+                     stock_price_compare: pd.DataFrame,
+                     stock_charts: list,
+                     club_data: dict,
+                     reports_dir: str = './reports/'):
+    """Draw monthly club report.
+
+    :param filename: <str> Filename to save report
+    :param stock_price_compare: <pandas.DataFrame> Dataframe containing the ticker symbol,
+                                Cost Basis, last month's stock price, this month's stock price,
+                                and the % change between the two months.
+    :param stock_charts: <list> of filenames of chart images
+    :param club_data: <dict> json of club_data from club_info.json
+    :param reports_dir: <str> optional directory to save reports to
+    :return:
+    """
+    # Sanity checks for files and folders
+    assert os.path.isdir(reports_dir)
+    assert os.path.isdir(os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                      'resources'))
     try:
-        prices['split coefficient'] = pd.to_numeric(prices['split coefficient'])
-    except KeyError:
-        pass
-    return prices
+        env = Environment(
+            loader=FileSystemLoader(os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                                 'resources')),
+            autoescape=select_autoescape(['html', 'xml'])
+        )
+        template = env.get_template("report_template.2.1.0.html")
+        company_logo = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                    'resources',
+                                    'logo.png')
+        stock_info = []
+        for index, row in stock_price_compare.iterrows():
+            stock_info.append({'ticker': index,
+                               'cost_basis': row['Cost Basis'].round(4),
+                               'last_month_price': row['Last Month'].round(2),
+                               'this_month_price': row['This Month'].round(2),
+                               'percent_change': row['% change'].round(4)}
+                              )
+        company_logo = ''  # TODO company logo file path
+        portfolio_performance_chart = ''  # TODO portfolio performance chart file path
+        # today = datetime.date.today()
+        # first = today.replace(day=1)
+        # last_month = first - datetime.timedelta(days=1)
+        avail_capital = 0  # TODO available capital to invest minus 25% reserve
+        min_investment = avail_capital * 0.03
+        market_reaction_chart = ''  # TODO build market reaction chart
+        last_month = datetime.datetime(1800, 1, 1).date()
+        this_month = datetime.datetime(1800, 1, 1).date()
+        for date in club_data['club']['valuation_dates']:
+            date_t = datetime.datetime.strptime(date, "%m/%d/%Y").date()
+            if date_t > this_month:
+                last_month = this_month
+                this_month = date_t
+        # this_month = this_month.strftime("%m/%d/%Y")
+        # last_month = last_month.strftime("%m/%d/%Y")
+        last_unit_mkt = club_data['club']['valuation_dates'][last_month.strftime("%m/%d/%Y")]['total_market_value'] / club_data['club']['valuation_dates'][last_month.strftime("%m/%d/%Y")]['total_units']
+        this_unit_mkt = club_data['club']['valuation_dates'][this_month.strftime("%m/%d/%Y")]['total_market_value'] / club_data['club']['valuation_dates'][this_month.strftime("%m/%d/%Y")]['total_units']
+        this_earnings = (club_data['club']['valuation_dates'][this_month.strftime("%m/%d/%Y")]['total_market_value'] - club_data['club']['valuation_dates'][this_month.strftime("%m/%d/%Y")]['partner_equity']) / club_data['club']['valuation_dates'][this_month.strftime("%m/%d/%Y")]['total_units']
+        last_earnings = (club_data['club']['valuation_dates'][last_month.strftime("%m/%d/%Y")]['total_market_value'] - club_data['club']['valuation_dates'][last_month.strftime("%m/%d/%Y")]['partner_equity']) / club_data['club']['valuation_dates'][last_month.strftime("%m/%d/%Y")]['total_units']
+        club = {
+            'last_month':
+                {
+                    'unit_mkt': "{:,.3f}".format(last_unit_mkt),
+                    'tot_mkt_value': "{:,.2f}".format(club_data['club']['valuation_dates'][last_month.strftime("%m/%d/%Y")]['total_market_value']),
+                    'equity': "{:,.2f}".format(club_data['club']['valuation_dates'][last_month.strftime("%m/%d/%Y")]['partner_equity']),
+                    'units': "{:,.3f}".format(club_data['club']['valuation_dates'][last_month.strftime("%m/%d/%Y")]['total_units']),
+                    'earnings': "{:,.3f}".format(last_earnings)
 
-
-def get_most_volatile(prices):
-    """Return the ticker symbol for the most volatile stock.
-
-    Parameters
-    ----------
-    prices : pandas.DataFrame
-        a pandas.DataFrame object with columns: ['ticker', 'date', 'price']
-
-    Returns
-    -------
-    ticker : string
-        ticker symbol for the most volatile stock
-    """
-    volatile_stock = ()
-    for x in prices['ticker'].unique().tolist():
-        price_returns = (prices[prices['ticker'] == x])
-        log_returns = np.log(price_returns['price']) - np.log(price_returns['price'].shift(1))
-        returns_std = log_returns.std()
-        print("{} : {}".format(x, returns_std))
-        if volatile_stock == ():
-            volatile_stock = (x, returns_std)
-        else:
-            if volatile_stock[1] < returns_std:
-                volatile_stock = (x, returns_std)
-    return volatile_stock[0]
-
-
-def resample_prices(close_prices, freq='M'):
-    """
-    Resample close prices for each ticker at specified frequency.
-
-    Parameters
-    ----------
-    close_prices : DataFrame
-        Close prices for each ticker and date
-            column names: Ticker date, stock_tickers
-            data is EoD ticker prices
-        ticker date 	A 	AAL 	AAP 	AAPL 	ABBV 	ABC 	ABT 	ACN 	ADBE 	ADI 	... 	XL 	XLNX 	XOM 	XRAY 	XRX 	XYL 	YUM 	ZBH 	ZION 	ZTS
-        2013-07-01 	29.99418563 	16.17609308 	81.13821681 	53.10917319 	34.92447839 	50.86319750 	31.42538772 	64.69409505 	46.23500000 	39.91336014 	... 	27.66879066 	35.28892781 	76.32080247 	40.02387348 	22.10666494 	25.75338607 	45.48038323 	71.89882693 	27.85858718 	29.44789315
-        2013-07-02 	29.65013670 	15.81983388 	80.72207258 	54.31224742 	35.42807578 	50.69676639 	31.27288084 	64.71204071 	46.03000000 	39.86057632 	... 	27.54228410 	35.05903252 	76.60816761 	39.96552964 	22.08273998 	25.61367511 	45.40266113 	72.93417195 	28.03893238 	28.57244125
-
-    freq : str
-        What frequency to sample at
-        For valid freq choices, see http://pandas.pydata.org/pandas-docs/stable/timeseries.html#offset-aliases
-
-    Returns
-    -------
-    prices_resampled : DataFrame
-        Resampled prices for each ticker and date
-    """
-    return close_prices.resample(freq).last()
-
-
-def compute_log_returns(prices):
-    """
-    Compute log returns for each ticker.
-
-    Parameters
-    ----------
-    prices : DataFrame
-        Prices for each ticker and date
-
-    Returns
-    -------
-    log_returns : DataFrame
-        Log returns for each ticker and date
-    """
-
-    return np.log(prices/prices.shift(1))
-
-
-def get_top_n(prev_returns, top_n):
-    """
-    Select the top performing stocks
-
-    Parameters
-    ----------
-    prev_returns : DataFrame
-        Previous shifted returns for each ticker and date
-    top_n : int
-        The number of top performing stocks to get
-
-    Returns
-    -------
-    top_stocks : DataFrame
-        Top stocks for each ticker and date marked with a 1
-    """
-    ret_top = prev_returns.copy()
-    for index, row in ret_top.iterrows():
-        top = row.nlargest(top_n).index
-
-        ret_top.loc[index] = 0
-        ret_top.loc[index, top] = 1
-    return ret_top.astype(int)
-
-
-def analyze_alpha(expected_portfolio_returns_by_date):
-    """
-    Perform a t-test with the null hypothesis being that the expected mean return is zero.
-
-    Parameters
-    ----------
-    expected_portfolio_returns_by_date : Pandas Series
-        Expected portfolio returns for each date
-
-    Returns
-    -------
-    t_value
-        T-statistic from t-test
-    p_value
-        Corresponding p-value
-    """
-    null_hypothesis = 0.0
-    ret = stats.ttest_1samp(expected_portfolio_returns_by_date, null_hypothesis)
-    return ret[0], ret[1]/2
-
-
-def portfolio_returns(df_long, df_short, lookahead_returns, n_stocks):
-    """
-    Compute expected returns for the portfolio, assuming equal investment in each long/short stock.
-
-    Parameters
-    ----------
-    df_long : DataFrame
-        Top stocks for each ticker and date marked with a 1
-    df_short : DataFrame
-        Bottom stocks for each ticker and date marked with a 1
-    lookahead_returns : DataFrame
-        Lookahead returns for each ticker and date
-    n_stocks: int
-        The number of stocks chosen for each month
-
-    Returns
-    -------
-    portfolio_returns : DataFrame
-        Expected portfolio returns for each ticker and date
-    """
-    long = (df_long * lookahead_returns) / n_stocks
-    short = (df_short * lookahead_returns) / n_stocks
-    #     print(long)
-    return long - short
-
-
-def analyze_alpha(expected_portfolio_returns_by_date):
-    """
-    Perform a t-test with the null hypothesis being that the expected mean return is zero.
-
-    Parameters
-    ----------
-    expected_portfolio_returns_by_date : Pandas Series
-        Expected portfolio returns for each date
-
-    Returns
-    -------
-    t_value
-        T-statistic from t-test
-    p_value
-        Corresponding p-value
-    """
-    # TODO: Implement Function
-    null_hypothesis = 0.0
-    ret = stats.ttest_1samp(expected_portfolio_returns_by_date, null_hypothesis)
-    return ret[0], ret[1]/2
+                },
+            'this_month':
+                {
+                    'unit_mkt': "{:,.3f}".format(this_unit_mkt),
+                    'tot_mkt_value': "{:,.2f}".format(club_data['club']['valuation_dates'][this_month.strftime("%m/%d/%Y")]['total_market_value']),
+                    'equity': "{:,.2f}".format(club_data['club']['valuation_dates'][this_month.strftime("%m/%d/%Y")]['partner_equity']),
+                    'units': "{:,.3f}".format(club_data['club']['valuation_dates'][this_month.strftime("%m/%d/%Y")]['total_units']),
+                    'earnings': "{:,.3f}".format(this_earnings)
+                },
+            'unit_mkt_change': "{:,.3f}".format(this_unit_mkt - last_unit_mkt),
+            'units_change': "{:,.3f}".format(club_data['club']['valuation_dates'][this_month.strftime("%m/%d/%Y")]['total_units'] - club_data['club']['valuation_dates'][last_month.strftime("%m/%d/%Y")]['total_units']),
+            'tot_mkt_value_change': "{:.2f}".format(club_data['club']['valuation_dates'][this_month.strftime("%m/%d/%Y")]['total_market_value'] - club_data['club']['valuation_dates'][last_month.strftime("%m/%d/%Y")]['total_market_value']),
+            'equity_change': "{:.2f}".format(club_data['club']['valuation_dates'][this_month.strftime("%m/%d/%Y")]['partner_equity'] - club_data['club']['valuation_dates'][last_month.strftime("%m/%d/%Y")]['partner_equity']),
+            'earnings_change': "{:.3f}".format(this_earnings - last_earnings)
+        }
+        # Generate HTML page
+        avail_capital = club_data['club']['valuation_dates'][this_month.strftime("%m/%d/%Y")]['available_capital'] * 0.75
+        min_investment = club_data['club']['valuation_dates'][this_month.strftime("%m/%d/%Y")]['total_market_value'] * 0.03
+        html_page = template.render(
+            club_name='Cypress Investment Club',
+            date=datetime.datetime.now().strftime('%B %Y'),
+            logo=company_logo,
+            last_month=last_month.strftime("%B"),
+            this_month=datetime.datetime.now().strftime('%B'),
+            stock_info=stock_info,
+            stock_charts=stock_charts,
+            portfolio_perfomrance_chart=portfolio_performance_chart,
+            version=warrenBot.__version__,
+            avail_capital="{:,.2f}".format(avail_capital),
+            min_investment="{:,.2f}".format(min_investment),
+            market_reaction=market_reaction_chart,
+            club=club,
+        )
+        # save html page as PDF
+        pdf_file_path = os.path.join(reports_dir,
+                                     f'{filename}.pdf'
+                                     )
+        convert_html_to_pdf(html_page, pdf_file_path)
+    except AssertionError as err:
+        raise FileNotFoundError(f'Company Logo not found! - {company_logo}') from err
+    except Exception as err:
+        print(err)
+        raise err
