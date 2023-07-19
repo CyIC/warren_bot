@@ -9,6 +9,7 @@ adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ### Added
     * Add Python build to Github actions
+    * Add Digital Ocean App deployment scripts
 
 ### Changed
     * Updated README

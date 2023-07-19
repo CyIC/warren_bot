@@ -1,0 +1,8 @@
+spec:
+  name: warrenBot
+  services:
+  - environment_slug: python
+    git:
+      branch: main
+      repo_clone_url: https://github.com/CyIC/warren.git
+    name: warrenBot
