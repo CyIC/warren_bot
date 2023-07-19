@@ -21,6 +21,7 @@ adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 
 ### Fixed
+    * Setup pyproject.toml to allow Python 3.10
 
 ### Deprecated
 
