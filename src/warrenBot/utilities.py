@@ -161,7 +161,6 @@ async def verify_club_data(data):
     :param data: <dict> club data json from local file
     :return data, changed: data is a dict with relevant club data, changed is a <bool> if anything was changed
     """
-    # TODO check club structure
     changed = False
     assert 'club' in data.keys()
     assert 'name' in data['club'].keys()

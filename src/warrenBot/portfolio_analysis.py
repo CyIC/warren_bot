@@ -139,7 +139,6 @@ async def run(club_stocks_file, club_info_file, key):
                                       ])
         club_stats = pd.concat([club_stats, other])
     club_stats = club_stats.set_index(['date']).reindex()
-    print(club_stats)  # TODO
 
     # Build log returns
     for x in prices['ticker'].unique().tolist():
