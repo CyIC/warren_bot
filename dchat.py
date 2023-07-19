@@ -75,7 +75,7 @@ async def run_stock_report(message):
         await message.reply("!stock_report requires a ticker symbol.")
         return
     await message.add_reaction("⏳")
-    await stock_analysis.run(message, ticker)
+    await stock_analysis.run(message, ticker, KEY)
     await message.channel.send('\n✅__**Stock Report Finished!**__')
 
 
@@ -85,7 +85,7 @@ async def run_club_report(message):
     :return:
     """
     await message.add_reaction("⏳")
-    await portfolio_analysis.run('./cyic_stocks.csv', './club_info.json', KEY)
+    await portfolio_analysis.run('./cyic_stocks.csv', './club_info.json', alphavantage_key=KEY)
     try:
         await message.clear_reaction("⏳")
     except discord.errors.Forbidden:

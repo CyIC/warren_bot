@@ -8,16 +8,12 @@ from prettytable import PrettyTable
 import pandas as pd
 import matplotlib.pyplot as plt
 import discord
-import configparser
 import logging
 
 from warrenBot import utilities as utils
 from warrenBot import alphavantage as alpha
 
 YRS_LOOKBACK = 5
-config = configparser.ConfigParser()
-config.read('bot_config.ini')
-KEY = config['alphavantage']['key']
 logger = logging.getLogger('discord')
 logger.setLevel(logging.DEBUG)
 
@@ -854,21 +850,24 @@ d) {dividend_low:.4f} to 1```""".format(lr_low=lr_low,
     return msg, files
 
 
-async def run(message, ticker):
+async def run(message, ticker, alphavantage_key=None):
     """Run stock analysis.
 
-    :param message:
-    :param ticker:
+    :param message: <discord.message> Discord message object to make replys to
+    :param ticker: Company stock ticker
+    :param alphavantage_key: Alphavantage API key
     :return:
     """
     # Get Company Data
-    income_statement = await alpha.get_alphavantage_income_statement(ticker, KEY)
-    balance_sheet = await alpha.get_alphavantage_balance_sheet(ticker, KEY)
-    earnings = await alpha.get_alphavantage_earnings(ticker, KEY)
-    cash_flow = await alpha.get_alphavantage_cash_flow(ticker, KEY)
+    income_statement = await alpha.get_alphavantage_income_statement(ticker, alphavantage_key)
+    balance_sheet = await alpha.get_alphavantage_balance_sheet(ticker, alphavantage_key)
+    earnings = await alpha.get_alphavantage_earnings(ticker, alphavantage_key)
+    cash_flow = await alpha.get_alphavantage_cash_flow(ticker, alphavantage_key)
     # Get company stock prices
-    monthly_company_prices = await alpha.get_monthly_alphavantage_company_prices(ticker, KEY)
-    daily_company_prices = await alpha.get_daily_alphavantage_company_prices(ticker, KEY)
+    monthly_company_prices = await alpha.get_monthly_alphavantage_company_prices(ticker,
+                                                                                 alphavantage_key)
+    daily_company_prices = await alpha.get_daily_alphavantage_company_prices(ticker,
+                                                                             alphavantage_key)
 
     # Build and send report components
     await utils.send_message_in_chunks(message.channel, past_sales_records(income_statement['annualReports']))
