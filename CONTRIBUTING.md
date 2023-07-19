@@ -120,9 +120,8 @@ the root of this repo.
    pipeline to fail if not successful.
 3. Ensure all documentation has been updated.
 4. If changes affect the Architecture of the application, ensure you add an ADR in the `docs/` folder.
-5. Finally, use bumpversion to adhere to [Semantic Versioning](http://semver.org/). When 'bumped' bumpversion will 
-   change all version numbers documented in the [.bumpversion.cfg](./.bumpversion.cfg) file; commit those changes, tag 
-   the new commit with the new version number and sign the commit with the developers configured GPG key.
+5. Bumpversion will be automatically ran as a GitHub action when commit message contains `#major`, `#minor`, or `#patch`
+   in the commit message. 
 6. Build the application according to the [Building](#Building) section, archive, zip and upload the package to Github 
    for production downloading.
 
