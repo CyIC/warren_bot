@@ -16,6 +16,7 @@ adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
     * Update bumpversion to remove tag signing for Github actions automation
     * Update Requirements to remove unneeded packages
     * Fix CHANGELOG
+    * Move bumpversion from build.yml to own action
 
 
 ### Fixed
