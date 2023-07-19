@@ -1,4 +1,4 @@
-# Warren Chatbot v0.0.2
+# Warren Chatbot v0.1.0
 
 Warren is a chatbot for investment clubs to analyze stocks, report on club fundamentals and more.
 
