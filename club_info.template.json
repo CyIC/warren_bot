@@ -1,0 +1,39 @@
+{
+    "club": {
+        "name": "Investment Club Name",
+        "valuation_dates": {
+            "01/14/2022": {
+                "total_units": 646.970269,
+                "total_market_value": 10768.10,
+                "partner_equity": 8060.00,
+                "available_capital": 4659.46
+            },
+            "02/18/2022": {
+                "total_units": 654.764235,
+                "total_market_value": 10341.45,
+                "partner_equity": 8190.00,
+                "available_capital": 4792.94
+            },
+            "03/11/2022": {
+                "total_units": 669.357248,
+                "total_market_value": 10173.36,
+                "partner_equity": 8420.00,
+                "available_capital": 5025.45
+            }
+        },
+        "club_stocks": {
+            "CSCO": {
+                "cik": "858877",
+                "industry": "Computer Communications Equipment",
+                "sector": "Tech",
+                "company_size": "mega"
+            },
+            "TXN": {
+                "cik": "97476",
+                "industry": "Semiconductors & Related Devices",
+                "sector": "Tech",
+                "company_size": "large"
+            }
+        }
+    }
+}
