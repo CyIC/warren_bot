@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=C0116, W0511
 """Collection of useful utilities for warrenBot including getting data from alphavantage and processing data structures."""
-import configparser
 import datetime
 import os
 import logging
@@ -34,10 +33,6 @@ color_scheme = {
 MAX_MESSAGE_LENGTH = 2000  # Maximum message length allowed by Discord
 logger = logging.getLogger('discord')
 logger.setLevel(logging.DEBUG)
-
-config = configparser.ConfigParser()
-config.read('bot_config.ini')
-KEY = config['alphavantage']['key']
 
 
 def prep_pipeline(filename: str, encoding: str = 'utf_8'):
