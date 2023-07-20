@@ -13,4 +13,5 @@ flake8==6.0.0
 wheel>=0.37.1
 setuptools>=40.8.0
 build>=0.9.0
+slack_bolt==1.18.0
 bump2version @ git+https://github.com/c4urself/bump2version@bc95374d0dff73e610bed520846f88859815e532
