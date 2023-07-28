@@ -67,6 +67,7 @@ async def help_command(message):
     await message.reply(help_message)
     return
 
+
 async def run_stock_report(message):
     try:
         ticker = message.content.split(" ", 1)[1]  # Get the stock ticker
@@ -75,8 +76,17 @@ async def run_stock_report(message):
         await message.reply("!stock_report requires a ticker symbol.")
         return
     await message.add_reaction("⏳")
-    await stock_analysis.run(message, ticker, KEY)
-    await message.channel.send('\n✅__**Stock Report Finished!**__')
+    try:
+        await stock_analysis.run(message, ticker, KEY)
+        await message.channel.send('\n✅ __**Stock Report Finished!**__')
+    except Exception as e:
+        try:
+            await message.clear_reaction("⏳")
+        except discord.errors.Forbidden:
+            pass
+        await message.add_reaction("🛑")
+        await message.reply('\n❌ __**Stock Report Failed!**__')
+        raise e
 
 
 async def run_club_report(message):
@@ -85,12 +95,18 @@ async def run_club_report(message):
     :return:
     """
     await message.add_reaction("⏳")
-    await portfolio_analysis.run('./cyic_stocks.csv', './club_info.json', alphavantage_key=KEY)
     try:
-        await message.clear_reaction("⏳")
-    except discord.errors.Forbidden:
-        pass
-    await message.add_reaction("✅")
+        await portfolio_analysis.run('./cyic_stocks.csv', './club_info.json', alphavantage_key=KEY)
+        try:
+            await message.clear_reaction("⏳")
+        except discord.errors.Forbidden:
+            pass
+        await message.add_reaction("✅")
+    except Exception as e:
+        # await message.clear_reaction("⏳")
+        await message.add_reaction("🛑")
+        await message.reply('\n❌ __**Portfolio Report Failed!**__')
+        raise e
 
 
 @CLIENT.event
