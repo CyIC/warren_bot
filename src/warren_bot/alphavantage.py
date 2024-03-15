@@ -205,7 +205,7 @@ def process_alphavantage_earnings(data: dict):
 
     annualEarnings, quarterlyEarnings
 
-    from warrenBot import utilities as util
+    from warren_bot import utilities as util
     import pandas as pd
     data = await util.get_alphavantage_earnings('MSFT')
 

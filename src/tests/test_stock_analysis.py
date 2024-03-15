@@ -3,10 +3,10 @@
 """Test stock_report module for stock analysis."""
 import unittest
 import json
-from warrenBot import alphavantage as alv
+from warren_bot import alphavantage as alv
 
 # under test
-from warrenBot import stock_analysis
+from warren_bot import stock_analysis
 
 
 class StockAnalysisTestCase(unittest.TestCase):
@@ -16,13 +16,13 @@ class StockAnalysisTestCase(unittest.TestCase):
         """Test successfull execution of record of stock method."""
         # GIVEN
         # Prepare files
-        with open('./src/warrenBot/tests/IBM.earnings.json') as file:
+        with open('./src/tests/IBM.earnings.json') as file:
             eps_data = json.load(file)
-        with open('./src/warrenBot/tests/IBM.income_statement.json') as file:
+        with open('./src/tests/IBM.income_statement.json') as file:
             income_data = json.load(file)
-        with open('./src/warrenBot/tests/IBM.daily_adjusted.json') as file:
+        with open('./src/tests/IBM.daily_adjusted.json') as file:
             daily_data = json.load(file)
-        with open('./src/warrenBot/tests/IBM.monthly_adjusted.json') as file:
+        with open('./src/tests/IBM.monthly_adjusted.json') as file:
             monthly_data = json.load(file)
         # Prepare data sources
         eps = alv.process_alphavantage_earnings(eps_data)
@@ -47,11 +47,11 @@ class StockAnalysisTestCase(unittest.TestCase):
         """Test successfull execution of trend method."""
         # GIVEN
         # Prepare files
-        with open('./src/warrenBot/tests/IBM.income_statement.json') as file:
+        with open('./src/tests/IBM.income_statement.json') as file:
             income_data = json.load(file)
-        with open('./src/warrenBot/tests/IBM.monthly_adjusted.json') as file:
+        with open('./src/tests/IBM.monthly_adjusted.json') as file:
             monthly_data = json.load(file)
-        with open('./src/warrenBot/tests/IBM.earnings.json') as file:
+        with open('./src/tests/IBM.earnings.json') as file:
             eps_data = json.load(file)
         # Prepare data sources
         eps = alv.process_alphavantage_earnings(eps_data)
@@ -74,7 +74,7 @@ class StockAnalysisTestCase(unittest.TestCase):
         """Test cash position printing module."""
         # GIVEN
         # Prepare files
-        with open('./src/warrenBot/tests/IBM.balance_sheet.json') as file:
+        with open('./src/tests/IBM.balance_sheet.json') as file:
             balance_data = json.load(file)
         # Prepare data sources
         balance_sheet = alv.process_alphavantage_balance_sheet(balance_data)
@@ -91,15 +91,15 @@ class StockAnalysisTestCase(unittest.TestCase):
         """Test cash position revenue_growth module."""
         # GIVEN
         # Prepare files
-        with open('./src/warrenBot/tests/IBM.income_statement.json') as file:
+        with open('./src/tests/IBM.income_statement.json') as file:
             income_data = json.load(file)
-        with open('./src/warrenBot/tests/IBM.daily_adjusted.json') as file:
+        with open('./src/tests/IBM.daily_adjusted.json') as file:
             daily_data = json.load(file)
-        with open('./src/warrenBot/tests/IBM.cash_flow.json') as file:
+        with open('./src/tests/IBM.cash_flow.json') as file:
             cash_data = json.load(file)
-        with open('./src/warrenBot/tests/IBM.earnings.json') as file:
+        with open('./src/tests/IBM.earnings.json') as file:
             eps_data = json.load(file)
-        with open('./src/warrenBot/tests/IBM.balance_sheet.json') as file:
+        with open('./src/tests/IBM.balance_sheet.json') as file:
             balance_data = json.load(file)
 
         # Prepare data sources
@@ -123,15 +123,15 @@ class StockAnalysisTestCase(unittest.TestCase):
         """Test cash position risk_reward module."""
         # GIVEN
         # Prepare files
-        with open('./src/warrenBot/tests/IBM.income_statement.json') as file:
+        with open('./src/tests/IBM.income_statement.json') as file:
             income_data = json.load(file)
-        with open('./src/warrenBot/tests/IBM.daily_adjusted.json') as file:
+        with open('./src/tests/IBM.daily_adjusted.json') as file:
             daily_data = json.load(file)
-        with open('./src/warrenBot/tests/IBM.monthly_adjusted.json') as file:
+        with open('./src/tests/IBM.monthly_adjusted.json') as file:
             monthly_data = json.load(file)
-        with open('./src/warrenBot/tests/IBM.earnings.json') as file:
+        with open('./src/tests/IBM.earnings.json') as file:
             eps_data = json.load(file)
-        with open('./src/warrenBot/tests/IBM.balance_sheet.json') as file:
+        with open('./src/tests/IBM.balance_sheet.json') as file:
             balance_data = json.load(file)
 
         # Prepare data sources

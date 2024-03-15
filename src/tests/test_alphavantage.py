@@ -5,7 +5,7 @@ import unittest
 import pandas as pd
 import json
 
-from warrenBot import alphavantage as alpha
+from warren_bot import alphavantage as alpha
 
 
 class AlphavantageTestCase(unittest.TestCase):
@@ -15,7 +15,7 @@ class AlphavantageTestCase(unittest.TestCase):
         """Test process income_statement method."""
         # GIVEN
         # Build IBM JSON from file
-        with open('./src/warrenBot/tests/IBM.income_statement.json') as file:
+        with open('./src/tests/IBM.income_statement.json') as file:
             data = json.load(file)
 
         # WHEN
@@ -86,7 +86,7 @@ class AlphavantageTestCase(unittest.TestCase):
         """Test process earnings method."""
         # GIVEN
         # Build IBM JSON from file
-        with open('./src/warrenBot/tests/IBM.earnings.json') as file:
+        with open('./src/tests/IBM.earnings.json') as file:
             data = json.load(file)
 
         # WHEN
@@ -116,7 +116,7 @@ class AlphavantageTestCase(unittest.TestCase):
         """Test process cash_flow method."""
         # GIVEN
         # Build IBM JSON from file
-        with open('./src/warrenBot/tests/IBM.cash_flow.json') as file:
+        with open('./src/tests/IBM.cash_flow.json') as file:
             data = json.load(file)
 
         # WHEN
@@ -193,7 +193,7 @@ class AlphavantageTestCase(unittest.TestCase):
         """Test process balance sheet method."""
         # GIVEN
         # Build IBM JSON from file
-        with open('./src/warrenBot/tests/IBM.balance_sheet.json') as file:
+        with open('./src/tests/IBM.balance_sheet.json') as file:
             data = json.load(file)
 
         # WHEN
@@ -290,7 +290,7 @@ class AlphavantageTestCase(unittest.TestCase):
         """Test process overview method."""
         # GIVEN
         # Build IBM JSON from file
-        with open('./src/warrenBot/tests/IBM.company_overview.json') as file:
+        with open('./src/tests/IBM.company_overview.json') as file:
             data = json.load(file)
 
         # WHEN
@@ -339,7 +339,7 @@ class AlphavantageTestCase(unittest.TestCase):
         """Test process prices method."""
         # GIVEN
         # Build IBM JSON from file
-        with open('./src/warrenBot/tests/IBM.daily_adjusted.json') as file:
+        with open('./src/tests/IBM.daily_adjusted.json') as file:
             data = json.load(file)
 
         # WHEN

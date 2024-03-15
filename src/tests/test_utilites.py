@@ -2,7 +2,7 @@
 # pylint: disable=C0116, W0511
 """Unit testing module for the utilities module."""
 import unittest
-from warrenBot import utilities as util
+from warren_bot import utilities as util
 
 
 class UtilitiesTestCase(unittest.TestCase):

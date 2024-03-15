@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 import discord
 import logging
 
-from warrenBot import utilities as utils
-from warrenBot import alphavantage as alpha
+from warren_bot import utilities as utils
+from warren_bot import alphavantage as alpha
 
 YRS_LOOKBACK = 5
 logger = logging.getLogger('discord')

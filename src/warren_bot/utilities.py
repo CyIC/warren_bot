@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=C0116, W0511
-"""Collection of useful utilities for warrenBot including getting data from alphavantage and processing data structures."""
+"""Collection of useful utilities for warren_bot including getting data from alphavantage and processing data structures."""
 import datetime
 import os
 import logging
@@ -11,7 +11,7 @@ import requests
 from jinja2 import Environment, select_autoescape, FileSystemLoader
 from xhtml2pdf import pisa
 
-import warrenBot
+import warren_bot
 
 color_scheme = {
     'index': '#B6B2CF',
@@ -293,7 +293,7 @@ def draw_club_report(filename: str,
             stock_info=stock_info,
             stock_charts=stock_charts,
             portfolio_perfomrance_chart=portfolio_performance_chart,
-            version=warrenBot.__version__,
+            version=warren_bot.__version__,
             avail_capital="{:,.2f}".format(avail_capital),
             min_investment="{:,.2f}".format(min_investment),
             market_reaction=market_reaction_chart,

@@ -2,7 +2,7 @@
 """Top-level package for warrenbot.
 
 warren_bot
-Copyright (c) 2023 J.A. Simmons V
+Copyright (c) 2024 Cypress Investment Club
 Full license in LICENSE.md
 """
 

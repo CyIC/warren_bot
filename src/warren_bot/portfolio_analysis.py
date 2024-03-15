@@ -12,9 +12,9 @@ import pandas as pd
 from pandas.tseries.offsets import BDay
 import mplfinance as mpf
 
-from warrenBot.alphavantage import download_stocks
-from warrenBot import utilities as util
-from warrenBot import analysis
+from warren_bot.alphavantage import download_stocks
+from warren_bot import utilities as util
+from warren_bot import analysis
 
 logger = logging.getLogger('discord')
 logger.setLevel(logging.DEBUG)
