@@ -7,22 +7,33 @@ on:
 
 jobs:
   build:
+    strategy:
+        fail-fast: false
+        matrix:
+            python-version: ["3.11"]
+            poetry-version: ["1.8.2"]
     runs-on: ubuntu-latest
     steps:
-        -   uses: actions/checkout@v3
+        -   uses: actions/checkout@v4
         -   name: Set up Python ${{ matrix.python-version }}
             uses: actions/setup-python@v4
             with:
                 python-version: ${{ matrix.python-version }}
-        -   name: Install dependencies
-            run: |
-                python -m pip install --upgrade pip
-                pip install poetry
-                poetry install
-        -   name: Lint with flake8
+#        -   name: install poetry
+#            run: |
+#                python -m pip install --upgrade pip
+#                pip install poetry
+#                poetry install
+        -   uses: abatilo/actions-poetry@v2
+            with:
+                poetry-version: ${{ matrix.poetry-version }}
+        -   name: run flake8
             run: |
                 # stop the build if there are Python syntax errors or undefined names
                 poetry run flake8 --ignore=E501,D401 src/warren_bot setup.py
         -   name: Test with pytest
             run: |
                 poetry run pytest
+        -   name: Build app
+            run: |
+                poetry build
