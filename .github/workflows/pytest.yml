@@ -21,6 +21,6 @@ jobs:
     - name: Install dependencies
       run: |
         poetry install
-    - name: Analysing the code with pylint
+    - name: Test with pytest
       run: |
         poetry run pytest --cov=src/warren_bot src/tests/

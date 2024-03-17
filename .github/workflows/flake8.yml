@@ -21,6 +21,6 @@ jobs:
     - name: Install dependencies
       run: |
         poetry install
-    - name: Analysing the code with pylint
+    - name: Analysing the code with flake8
       run: |
         poetry run flake8 --ignore=E501,D401 src/warren_bot setup.py
