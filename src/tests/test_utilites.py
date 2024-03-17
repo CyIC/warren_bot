@@ -11,7 +11,7 @@ class UtilitiesTestCase(unittest.TestCase):
     def test_fix_cik_equal_str(self):
         """Test fix_cik to ensure proper size."""
         # Given
-        cik = '0000001234'
+        cik = "0000001234"
 
         # When
         resp = util.fix_cik(cik)
@@ -23,7 +23,7 @@ class UtilitiesTestCase(unittest.TestCase):
     def test_fix_cik_smaller_str(self):
         """Test fix_cik to ensure proper size."""
         # Given
-        cik = '1234'
+        cik = "1234"
 
         # When
         resp = util.fix_cik(cik)
@@ -34,7 +34,7 @@ class UtilitiesTestCase(unittest.TestCase):
     def test_fix_cik_larger_str(self):
         """Test fix_cik to ensure proper size."""
         # Given
-        cik = '00000001234'
+        cik = "00000001234"
 
         # When
         resp = util.fix_cik(cik)
@@ -43,5 +43,5 @@ class UtilitiesTestCase(unittest.TestCase):
         self.assertEqual(resp, cik)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

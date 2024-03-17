@@ -8,6 +8,8 @@ from warren_bot import alphavantage as alv
 # under test
 from warren_bot import stock_analysis
 
+# pylint: disable=E1136
+
 
 class StockAnalysisTestCase(unittest.TestCase):
     """Test Stock Analysis methods."""
@@ -16,13 +18,13 @@ class StockAnalysisTestCase(unittest.TestCase):
         """Test successfull execution of record of stock method."""
         # GIVEN
         # Prepare files
-        with open('./src/tests/IBM.earnings.json') as file:
+        with open("./src/tests/IBM.earnings.json", encoding="utf-8") as file:
             eps_data = json.load(file)
-        with open('./src/tests/IBM.income_statement.json') as file:
+        with open("./src/tests/IBM.income_statement.json", encoding="utf-8") as file:
             income_data = json.load(file)
-        with open('./src/tests/IBM.daily_adjusted.json') as file:
+        with open("./src/tests/IBM.daily_adjusted.json", encoding="utf-8") as file:
             daily_data = json.load(file)
-        with open('./src/tests/IBM.monthly_adjusted.json') as file:
+        with open("./src/tests/IBM.monthly_adjusted.json", encoding="utf-8") as file:
             monthly_data = json.load(file)
         # Prepare data sources
         eps = alv.process_alphavantage_earnings(eps_data)
@@ -31,11 +33,7 @@ class StockAnalysisTestCase(unittest.TestCase):
         monthly_prices = alv.process_alphavantage_company_prices(monthly_data)
 
         # WHEN
-        msg, high_yield = stock_analysis.record_of_stock(eps,
-                                                         income_statement,
-                                                         daily_prices,
-                                                         monthly_prices
-                                                         )
+        msg, high_yield = stock_analysis.record_of_stock(eps, income_statement, daily_prices, monthly_prices)
 
         # THEN
         self.assertIsInstance(high_yield, float)
@@ -47,11 +45,11 @@ class StockAnalysisTestCase(unittest.TestCase):
         """Test successfull execution of trend method."""
         # GIVEN
         # Prepare files
-        with open('./src/tests/IBM.income_statement.json') as file:
+        with open("./src/tests/IBM.income_statement.json", encoding="utf-8") as file:
             income_data = json.load(file)
-        with open('./src/tests/IBM.monthly_adjusted.json') as file:
+        with open("./src/tests/IBM.monthly_adjusted.json", encoding="utf-8") as file:
             monthly_data = json.load(file)
-        with open('./src/tests/IBM.earnings.json') as file:
+        with open("./src/tests/IBM.earnings.json", encoding="utf-8") as file:
             eps_data = json.load(file)
         # Prepare data sources
         eps = alv.process_alphavantage_earnings(eps_data)
@@ -59,10 +57,7 @@ class StockAnalysisTestCase(unittest.TestCase):
         monthly_prices = alv.process_alphavantage_company_prices(monthly_data)
 
         # WHEN
-        msg, files = stock_analysis.trend(income_statement,
-                                          eps,
-                                          monthly_prices
-                                          )
+        msg, files = stock_analysis.trend(income_statement, eps, monthly_prices)
 
         # THEN
         self.assertIsInstance(msg, str)
@@ -74,7 +69,7 @@ class StockAnalysisTestCase(unittest.TestCase):
         """Test cash position printing module."""
         # GIVEN
         # Prepare files
-        with open('./src/tests/IBM.balance_sheet.json') as file:
+        with open("./src/tests/IBM.balance_sheet.json", encoding="utf-8") as file:
             balance_data = json.load(file)
         # Prepare data sources
         balance_sheet = alv.process_alphavantage_balance_sheet(balance_data)
@@ -91,15 +86,15 @@ class StockAnalysisTestCase(unittest.TestCase):
         """Test cash position revenue_growth module."""
         # GIVEN
         # Prepare files
-        with open('./src/tests/IBM.income_statement.json') as file:
+        with open("./src/tests/IBM.income_statement.json", encoding="utf-8") as file:
             income_data = json.load(file)
-        with open('./src/tests/IBM.daily_adjusted.json') as file:
+        with open("./src/tests/IBM.daily_adjusted.json", encoding="utf-8") as file:
             daily_data = json.load(file)
-        with open('./src/tests/IBM.cash_flow.json') as file:
+        with open("./src/tests/IBM.cash_flow.json", encoding="utf-8") as file:
             cash_data = json.load(file)
-        with open('./src/tests/IBM.earnings.json') as file:
+        with open("./src/tests/IBM.earnings.json", encoding="utf-8") as file:
             eps_data = json.load(file)
-        with open('./src/tests/IBM.balance_sheet.json') as file:
+        with open("./src/tests/IBM.balance_sheet.json", encoding="utf-8") as file:
             balance_data = json.load(file)
 
         # Prepare data sources
@@ -110,11 +105,13 @@ class StockAnalysisTestCase(unittest.TestCase):
         balance_sheet = alv.process_alphavantage_balance_sheet(balance_data)
 
         # WHEN
-        msg = stock_analysis.revenue_growth(daily_prices,
-                                            cash_flow,
-                                            income_statement,
-                                            earnings['quarterlyEarnings']['reportedEPS'][-1],
-                                            balance_sheet['annualReports']['commonStockSharesOutstanding'][-1])
+        msg = stock_analysis.revenue_growth(
+            daily_prices,
+            cash_flow,
+            income_statement,
+            earnings["quarterlyEarnings"]["reportedEPS"][-1],
+            balance_sheet["annualReports"]["commonStockSharesOutstanding"][-1],
+        )
 
         # THEN
         self.assertIsInstance(msg, str)
@@ -123,31 +120,33 @@ class StockAnalysisTestCase(unittest.TestCase):
         """Test cash position risk_reward module."""
         # GIVEN
         # Prepare files
-        with open('./src/tests/IBM.income_statement.json') as file:
+        with open("./src/tests/IBM.income_statement.json", encoding="utf-8") as file:
             income_data = json.load(file)
-        with open('./src/tests/IBM.daily_adjusted.json') as file:
+        with open("./src/tests/IBM.daily_adjusted.json", encoding="utf-8") as file:
             daily_data = json.load(file)
-        with open('./src/tests/IBM.monthly_adjusted.json') as file:
+        with open("./src/tests/IBM.monthly_adjusted.json", encoding="utf-8") as file:
             monthly_data = json.load(file)
-        with open('./src/tests/IBM.earnings.json') as file:
+        with open("./src/tests/IBM.earnings.json", encoding="utf-8") as file:
             eps_data = json.load(file)
-        with open('./src/tests/IBM.balance_sheet.json') as file:
-            balance_data = json.load(file)
+        # with open("./src/tests/IBM.balance_sheet.json", encoding="utf-8") as file:
+        #     balance_data = json.load(file)
 
         # Prepare data sources
         income_statement = alv.process_alphavantage_income_statement(income_data)
         daily_prices = alv.process_alphavantage_company_prices(daily_data)
         monthly_prices = alv.process_alphavantage_company_prices(monthly_data)
         earnings = alv.process_alphavantage_earnings(eps_data)
-        balance_sheet = alv.process_alphavantage_balance_sheet(balance_data)
+        # balance_sheet = alv.process_alphavantage_balance_sheet(balance_data)
 
         # WHEN
-        msg, charts = stock_analysis.risk_reward(daily_prices,
-                                                 earnings,
-                                                 monthly_prices,
-                                                 income_statement,
-                                                 earnings['quarterlyEarnings']['reportedEPS'][-1],  # stand in for highest EPS
-                                                 balance_sheet['annualReports']['commonStockSharesOutstanding'][-1])
+        msg, charts = stock_analysis.risk_reward(
+            daily_prices,
+            earnings,
+            monthly_prices,
+            income_statement,
+            earnings["quarterlyEarnings"]["reportedEPS"][-1],  # stand in for highest EPS
+            # balance_sheet["annualReports"]["commonStockSharesOutstanding"][-1],
+        )
         # THEN
         self.assertIsInstance(msg, str)
         self.assertIsInstance(charts, list)
@@ -155,5 +154,5 @@ class StockAnalysisTestCase(unittest.TestCase):
             self.assertIsInstance(fig, str)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

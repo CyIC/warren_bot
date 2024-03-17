@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=C0116, W0511
 """Module library for quant financial analysis."""
-from scipy import stats
 import numpy as np
+from scipy import stats
 
 
 def estimate_exp_mov_avg_volatility(prices, lmda):
@@ -25,7 +25,7 @@ def estimate_exp_mov_avg_volatility(prices, lmda):
     # Implement the exponential moving average volatility model and return the last value.
     log_returns = np.log(prices) - np.log(prices.shift(1))
     log_returns = log_returns.pow(2)
-    ewm_returns = log_returns.ewm(alpha=(1 - lmda)).mean().pow(.5)
+    ewm_returns = log_returns.ewm(alpha=1 - lmda).mean().pow(0.5)
     return ewm_returns.iloc[-1]
 
 
@@ -73,7 +73,7 @@ def shift_returns(returns, shift_n):
     return returns.shift(shift_n)
 
 
-def resample_prices(close_prices, freq='M'):
+def resample_prices(close_prices, freq="M"):
     """Resample close prices for each ticker at specified frequency.
 
     :param close_prices: DataFrame
@@ -99,12 +99,12 @@ def get_most_volatile(prices):
         ticker symbol for the most volatile stock
     """
     volatile_stock = ()
-    for x in prices['ticker'].unique().tolist():
-        price_returns = (prices[prices['ticker'] == x])
-        log_returns = np.log(price_returns['price']) - np.log(price_returns['price'].shift(1))
+    for x in prices["ticker"].unique().tolist():
+        price_returns = prices[prices["ticker"] == x]
+        log_returns = np.log(price_returns["price"]) - np.log(price_returns["price"].shift(1))
         returns_std = log_returns.std()
         print("{} : {}".format(x, returns_std))
-        if volatile_stock == ():
+        if not volatile_stock:
             volatile_stock = (x, returns_std)
         else:
             if volatile_stock[1] < returns_std:
