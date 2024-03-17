@@ -67,3 +67,31 @@ disable = [
 [tool.black]
 line-length = 120
 target-version = ['py311']
+
+[tool.bumpversion]
+current_version = "0.1.0"
+parse = "(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)(-(?P<build>\d+))?"
+commit = true
+tag = true
+serialize = [
+    "{major}.{minor}.{patch}-{build}",
+    "{major}.{minor}.{patch}",
+    ]
+
+[tool.bumpversion.part.build]
+independent = true
+
+[tool.bumpversion.files]
+filename = "README.md"
+search = "v{current_version}"
+replace = "v{new_version}"
+
+[tool.bumpversion.files]
+filename = "pyproject.toml"
+search = 'version = "{current_version}"'
+replace = 'version = "{new_version}"'
+
+[tool.bumpversion.files]
+filename = "CHANGELOG.md"
+search = "[Unreleased]"
+replace = "[{new_version}] - {now:%Y-%m-%d}"

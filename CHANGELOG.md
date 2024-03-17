@@ -13,6 +13,7 @@ adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 ### Changed
     * Moved Logging control to seperate file
     * Fix linting formatting errors
+    * Move bumpversion rules to pyproject.toml
 
 ### Fixed
 
