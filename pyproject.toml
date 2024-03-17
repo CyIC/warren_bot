@@ -81,17 +81,17 @@ serialize = [
 [tool.bumpversion.part.build]
 independent = true
 
-[tool.bumpversion.files]
+[[tool.bumpversion.files]]
 filename = "README.md"
 search = "v{current_version}"
 replace = "v{new_version}"
 
-[tool.bumpversion.files]
+[[tool.bumpversion.files]]
 filename = "pyproject.toml"
 search = 'version = "{current_version}"'
 replace = 'version = "{new_version}"'
 
-[tool.bumpversion.files]
+[[tool.bumpversion.files]]
 filename = "CHANGELOG.md"
 search = "[Unreleased]"
 replace = "[{new_version}] - {now:%Y-%m-%d}"
