@@ -66,9 +66,6 @@
   </ol>
 </details>
 
-
-
-
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
@@ -217,7 +214,7 @@ This project uses libraries and software listed in the [Built With](README.md#bu
 [issues-url]: https://github.com/CyIC/warren_bot/issues
 [license-shield]: https://img.shields.io/github/license/CyIC/warren_bot.svg?style=for-the-badge
 [license-url]: https://github.com/CyIC/warren_bot/blob/master/LICENSE.md
-[product-screenshot]: images/screenshot.png
+[product-screenshot]: images/demo.png
 [lint-flake8-shield]: https://img.shields.io/badge/linting-flake8-yellowgreen?style=for-the-badge
 [flake8-url]: https://flake8.pycqa.org/en/latest/
 [discordpy-url]: https://discordpy.readthedocs.io/en/stable/
