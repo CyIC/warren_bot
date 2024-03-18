@@ -81,11 +81,8 @@ With Warren, you can:
 
 ### Built With
 
-* [Python3.11](https://www.python.org/downloads/release/python-3110/)
 * [Pandas](https://pandas.pydata.org/)
 * [NumPy](https://numpy.org/)
-* [PrettyTables](https://github.com/jazzband/prettytable)
-* [requests](https://docs.python-requests.org/en/latest/index.html)
 * [matplotlib](https://matplotlib.org/)
 * [mplfinance](https://github.com/matplotlib/mplfinance)
 * [Discord.py][discordpy-url]
@@ -193,6 +190,8 @@ This project uses libraries and software listed in the [Built With](README.md#bu
 
 * [Lance James](https://github.com/lancejames221b) and his Hal DiscordBot for the idea and initial structure.
 * [bump-my-version](https://github.com/callowayproject/bump-my-version)
+* [PrettyTables](https://github.com/jazzband/prettytable)
+* [requests](https://docs.python-requests.org/en/latest/index.html)
 * [Poetry][poetry-url]
 * [GitHub Pages](https://pages.github.com)
 * [Font Awesome](https://fontawesome.com)
