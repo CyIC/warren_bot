@@ -10,15 +10,16 @@ import discord
 from warren_bot import portfolio_analysis
 from warren_bot import stock_analysis
 
+
 config = configparser.ConfigParser()
-config.read("../../bot_config.ini")
-token = config["discord"]["token"]
+config.read("./bot_config.ini")
+TOKEN = config["discord"]["token"]
 KEY = config["alphavantage"]["key"]
 LOGGER = logging.getLogger("discord")
 
 DEBUG = False
 
-commands_help = {
+COMMANDS_HELP = {
     "!stock_report": "!stock_report <ticker> will return club worksheet calculations of the "
     "provided stock ticker. (also !sr)",
     "!club_report": "!club_report will deliver the current status of the investment club. (also !cr)",
@@ -64,7 +65,7 @@ async def help_command(message):
 
     :param message: Discord Message
     """
-    command_strings = [f"{command}: {description}" for command, description in commands_help.items()]
+    command_strings = [f"{command}: {description}" for command, description in COMMANDS_HELP.items()]
     # Join the command strings with a newline character
     command_list = "\n\n".join(command_strings)
     # Send the message
@@ -186,6 +187,10 @@ async def main():
     await portfolio_analysis.run("./cyic_stocks.csv", "./club_info.json", KEY)
 
 
+async def run():
+    CLIENT.run(TOKEN)
+
+
 if __name__ == "__main__":
-    CLIENT.run(token)
+    CLIENT.run(TOKEN)
     # asyncio.run(main())
