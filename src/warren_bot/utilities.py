@@ -5,6 +5,7 @@ data structures."""
 import datetime
 import logging
 import os
+from argparse import ArgumentParser
 from asyncio import sleep
 
 import pandas as pd
@@ -14,7 +15,13 @@ from xhtml2pdf import pisa
 
 import warren_bot
 
+try:
+    import ConfigParser as config_parser  # noqa: N813
+except:  # noqa: E722 pylint: disable=bare-except
+    import configparser as config_parser
+
 # noqa: W503
+
 color_scheme = {
     "index": "#B6B2CF",
     "etf": "#2D3ECF",
@@ -33,8 +40,7 @@ color_scheme = {
     "main_line": "black",
 }
 MAX_MESSAGE_LENGTH = 2000  # Maximum message length allowed by Discord
-logger = logging.getLogger("discord")
-logger.setLevel(logging.DEBUG)
+LOGGER = logging.getLogger()
 
 
 def prep_pipeline(filename: str, encoding: str = "utf_8"):
@@ -353,3 +359,93 @@ def draw_club_report(
     except Exception as err:
         print(err)
         raise err
+
+
+def process_config_file(cfg_obj=None):
+    """Process passed config file and overwritten passed config dict.
+
+    :param cfg_obj: config object
+        cfg_obj = {
+            "config_file": "./bot_config.ini",
+            "logging_level": "INFO",
+            "discord": {
+                "token": "",
+                "discord_app_id": "",
+                "discord_public_key": "",
+            },
+            "alphavantage": {"key": ""},
+        }
+    :return: overwritten config dict
+    """
+    # Check that config file exists
+    LOGGER.debug("Config file used: %s", cfg_obj["config_file"])
+    if not os.path.exists(cfg_obj["config_file"]):
+        LOGGER.warning("COnfig file does not exist: %s", cfg_obj["config_file"])
+        return cfg_obj
+    config = config_parser.ConfigParser()
+    config.read(cfg_obj["config_file"])
+    # Discord
+    try:
+        cfg_obj["discord"]["token"] = config.get("discord", "token")
+        cfg_obj["discord"]["discord_app_id"] = config.get("discord", "discordAppId")
+        cfg_obj["discord"]["discord_public_key"] = config.get("discord", "discordPublicKey")
+    except config_parser.NoOptionError:
+        LOGGER.error("Could not read discord configuration.")
+    # Alphavantage
+    try:
+        cfg_obj["alphavantage"]["key"] = config.get("alphavantage", "key")
+    except config_parser.NoOptionError:
+        LOGGER.error("Could not read alphavantage configuration.")
+    # Logging Level
+    try:
+        cfg_obj["logging_level"] = config.get("bot", "logging_level")
+    except config_parser.NoOptionError:
+        LOGGER.error("Could not read logging_level configuration.")
+    return cfg_obj
+
+
+def process_env_variables(config):  # pylint: disable=too-many-branches
+    """Process OS environmental variables.
+
+    :param config: config object
+        config = {
+            "config_file": "./bot_config.ini",
+            "logging_level": "INFO",
+            "discord": {
+                "token": "",
+                "discord_app_id": "",
+                "discord_public_key": "",
+            },
+            "alphavantage": {"key": ""},
+        }
+    :return: overwritten config dict
+    """
+    # os_env = ["WARREN_CONFIG", "DISCORD_TOKEN", "DISCORD_APP_ID", "DISCORD_PUB_KEY", "ALPHAVANTAGE_KEY"]
+    if os.getenv("WARREN_CONFIG"):
+        config["config_file"] = os.getenv("WARREN_CONFIG")
+    if os.getenv("DISCORD_TOKEN"):
+        config["discord"]["token"] = os.getenv("DISCORD_TOKEN")
+    # TODO finish for all os_env
+    return config
+
+
+def process_cli(config: dict, cli: ArgumentParser):
+    """
+
+    :param config:
+    :param cli:
+    :return:
+    """
+    if cli.config is not None:
+        config["config_file"] = cli.config
+    # TODO finish for all parsed args
+
+
+def parse_args(args):
+    """
+
+    :param args:
+    :return:
+    """
+    # TODO parse the cli args
+    pass
