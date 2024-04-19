@@ -111,6 +111,11 @@ tox -e flake8
 Building, packaging and deployment is managed by Github pipeline and steps can be seen in the `.github-ci.yml` file at 
 the root of this repo.
 
+## Versioning
+
+We use [SemVer](http://semver.org/) for versioning. For the versions available, see the
+[tags on this repository](https://github.com/CyIC/warren_bot/tags). 
+
 ## Release instructions
 1. First, ensure that all code reviews have been completed successfully. Ensure that the [CHANGELOG](./CHANGELOG.md) has 
    been updated with all the changes under the `Unreleased` section of the 
