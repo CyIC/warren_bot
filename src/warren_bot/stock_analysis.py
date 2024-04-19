@@ -47,37 +47,39 @@ def past_sales_records(income_statement):
     :return: <str> a message of the section to print
     """
     # Past Sales Records
-    sales_per_year = income_statement["totalRevenue"]
+    sales_per_year = income_statement["totalRevenue"].sort_values(ascending=False)
     # Last year and year before sales
-    recent_sales_trend = (sales_per_year[-1] + sales_per_year[-2]) / 2
+    recent_sales_trend = (sales_per_year.iloc[0] + sales_per_year.iloc[1]) / 2
     # Years 5 and 6 sales
-    past_sales_trend = (sales_per_year[0] + sales_per_year[1]) / 2
+    past_sales_trend = (sales_per_year.iloc[YRS_LOOKBACK - 1] + sales_per_year.iloc[YRS_LOOKBACK - 2]) / 2
     sales_increase = recent_sales_trend - past_sales_trend
     sales_percent_increase = sales_increase / past_sales_trend
-    compound_annual_sales_growth_rate = pow((sales_per_year[-1] / sales_per_year[0]), 1 / YRS_LOOKBACK) - 1
+    compound_annual_sales_growth_rate = (
+        pow((sales_per_year.iloc[0] / sales_per_year.iloc[YRS_LOOKBACK - 1]), 1 / YRS_LOOKBACK) - 1
+    )
     # display table
     past_sales_record_table = PrettyTable(float_format=".4")
     past_sales_record_table.header = False
     past_sales_record_table.border = False
-    past_sales_record_table.add_row(["Sales for most recent year", "${:20,.0f}".format(sales_per_year[-1])])
-    past_sales_record_table.add_row(["Sales for next most recent year", "${:20,.0f}".format(sales_per_year[-2])])
+    past_sales_record_table.add_row(["Sales for most recent year", "${:20,.0f}".format(sales_per_year.iloc[0])])
+    past_sales_record_table.add_row(["Sales for next most recent year", "${:20,.0f}".format(sales_per_year.iloc[1])])
     past_sales_record_table.add_row(
         [
             "Sales for {} years ago".format(YRS_LOOKBACK - 1),
-            "${:20,.0f}".format(sales_per_year[1]),
+            "${:20,.0f}".format(sales_per_year.iloc[YRS_LOOKBACK - 2]),
         ]
     )
     past_sales_record_table.add_row(
         [
             f"Sales for {YRS_LOOKBACK} years ago",
-            f"${sales_per_year[0]:20,.0f}",
+            f"${sales_per_year.iloc[YRS_LOOKBACK - 1]:20,.0f}",
         ]
     )
-    past_sales_record_table.add_row(["% increase in sales", f"{sales_percent_increase.round(4):.3%}"])
+    past_sales_record_table.add_row(["% increase in sales", f"{sales_percent_increase:.3%}"])
     past_sales_record_table.add_row(
         [
             "Compound Annual Sales Growth Rate",
-            f"{compound_annual_sales_growth_rate.round(4):.3%}",
+            f"{compound_annual_sales_growth_rate:.3%}",
         ]
     )
     past_sales_record_table.align["Field 1"] = "l"
@@ -91,42 +93,31 @@ def past_eps(earnings):
     :param earnings:
     :return: <str> a message of the section to print
     """
-    earnings = earnings[earnings.index >= datetime.datetime.now() - relativedelta(years=5)]
+    # Reduce data to YRS_LOOKBACK
+    earnings = earnings[earnings.index >= datetime.datetime.now() - relativedelta(years=YRS_LOOKBACK)]
+    earnings = earnings.sort_values(by="fiscalDateEnding", ascending=False)
     # Last year and year before EPS
-    recent_eps_mean = (earnings.iloc[-1] + earnings.iloc[-2]) / 2
+    recent_eps_mean = (earnings.iloc[0] + earnings.iloc[1]) / 2
     # Years 4 and 5 EPS
-    past_eps_mean = (earnings.iloc[1] + earnings.iloc[0]) / 2
+    past_eps_mean = (earnings.iloc[-1] + earnings.iloc[-2]) / 2
     eps_increase = recent_eps_mean - past_eps_mean
     eps_percent_increase = eps_increase / past_eps_mean
-    compound_annual_eps_growth_rate = pow(earnings.iloc[-1] / earnings.iloc[0], (1 / YRS_LOOKBACK)) - 1
+    compound_annual_eps_growth_rate = pow(earnings.iloc[0] / earnings.iloc[-1], (1 / YRS_LOOKBACK)) - 1
     # display table
     past_eps_record_table = PrettyTable()
     past_eps_record_table.align = "l"
     past_eps_record_table.align["Field 2"] = "r"
     past_eps_record_table.header = False
     past_eps_record_table.border = False
-    past_eps_record_table.add_row(["EPS for most recent year", f"{earnings.iloc[-1].round(4)[0]:10.4f} "])
+    past_eps_record_table.add_row(["EPS for most recent year", f"{earnings.iloc[0]['reportedEPS']:10.4f} "])
+    past_eps_record_table.add_row(["EPS for next most recent year", f"{earnings.iloc[1]['reportedEPS']:10.4f} "])
     past_eps_record_table.add_row(
-        [
-            "EPS for next most recent year",
-            f"{earnings.iloc[-2].round(4)[0]:10.4f} ",
-        ]
+        [f"EPS for {YRS_LOOKBACK - 1} years ago", f"{earnings.iloc[-2]['reportedEPS']:10.4f} "]
     )
+    past_eps_record_table.add_row([f"EPS for {YRS_LOOKBACK} years ago", f"{earnings.iloc[-1]['reportedEPS']:10.4f}"])
+    past_eps_record_table.add_row(["% increase in earnings", f"{eps_percent_increase['reportedEPS']:10.4%}"])
     past_eps_record_table.add_row(
-        [
-            f"EPS for {YRS_LOOKBACK - 1} years ago",
-            f"{earnings.iloc[1].round(4)[0]:10.4f} ",
-        ]
-    )
-    past_eps_record_table.add_row(
-        [
-            f"EPS for {YRS_LOOKBACK} years ago",
-            f"{earnings.iloc[0].round(4)[0]:10.4f}",
-        ]
-    )
-    past_eps_record_table.add_row(["% increase in earnings", f"{eps_percent_increase.round(4)[0]:10.4%}"])
-    past_eps_record_table.add_row(
-        ["Compound Annual rate of EPS", f"{compound_annual_eps_growth_rate.round(4)[0]:10.4%}"]
+        ["Compound Annual rate of EPS", f"{compound_annual_eps_growth_rate['reportedEPS']:10.4%}"]
     )
     msg = "\n__**Past EPS**__\n"
     msg += f"*EPS per year*: ```{earnings}```"
@@ -134,12 +125,12 @@ def past_eps(earnings):
     return msg
 
 
-def record_of_stock(eps, income_statement, daily_prices, monthly_prices):
+def record_of_stock(eps, inc_statement, daily_prices, monthly_prices):
     """Build record of stock section of analysis.
 
     :param eps:
-    :param income_statement:
-    :param stock_price_json:
+    :param inc_statement:
+    :param daily_prices:
     :param monthly_prices:
     :return: <tuple> (<list> a list of message chunks to print, <float> max high_yield)
     """
@@ -149,24 +140,32 @@ def record_of_stock(eps, income_statement, daily_prices, monthly_prices):
 
     # Get only last 5 years of yearly earnings
     eps_per_year = eps["annualEarnings"]
-    eps_per_year = eps_per_year[eps_per_year.index >= datetime.datetime.now() - relativedelta(years=5)]
+    eps_per_year = eps_per_year[eps_per_year.index >= datetime.datetime.now() - relativedelta(years=YRS_LOOKBACK)]
+    eps_per_year = eps_per_year.sort_values(by="fiscalDateEnding", ascending=False)
     # Get only last 5 years of quarterly earnings
     quarterly_eps = eps["quarterlyEarnings"]
-    quarterly_eps = quarterly_eps[quarterly_eps.index >= datetime.datetime.now() - relativedelta(years=5)]
+    quarterly_eps = quarterly_eps[quarterly_eps.index >= datetime.datetime.now() - relativedelta(years=YRS_LOOKBACK)]
+    quarterly_eps = quarterly_eps.sort_values(by="fiscalDateEnding", ascending=False)
+    # Normalize other Data
+    daily_prices = daily_prices.sort_values(by="date", ascending=False)
+    monthly_prices = monthly_prices.sort_values(by="date", ascending=False)
+    inc_statement["annualReports"] = inc_statement["annualReports"].sort_values(by="fiscalDateEnding", ascending=False)
+    inc_statement["quarterlyReports"] = inc_statement["quarterlyReports"].sort_values(
+        by="fiscalDateEnding", ascending=False
+    )
 
     # get current stock prices
-    present_price = daily_prices["close"][-1]
+    present_price = daily_prices["close"].iloc[0]
     # get current eps
-    present_eps = quarterly_eps.iloc[-1]["reportedEPS"]
-    # get monthly prices
+    present_eps = quarterly_eps.iloc[0]["reportedEPS"]
     msg.append(f"*Present Price*:\t**{present_price:.3f}**\t*Present EPS*:\t**{present_eps:.3f}**")
     # Display
-    high_prices = []
-    low_prices = []
-    pe_high = []
-    pe_low = []
-    percent_payout = []
-    high_yield = []
+    high_prices = {}
+    low_prices = {}
+    pe_high = {}
+    pe_low = {}
+    percent_payout = {}
+    high_yield = {}
     eps_table = PrettyTable(
         [
             "List Last 5 Years",
@@ -185,25 +184,26 @@ def record_of_stock(eps, income_statement, daily_prices, monthly_prices):
     eps_table.align = "r"
     eps_table.align["PE Ratio at High"] = "c"
     eps_table.align["PE Ratio at Low"] = "c"
+    eps_per_year = eps_per_year.sort_index(axis=0, ascending=True)
     for yr in eps_per_year.index:
         high = float(monthly_prices.loc[yr.strftime("%Y")]["high"].max())
-        high_prices.append(high)
+        high_prices[yr] = high  # build high_prices dict to convert into PD.series
         low = float(monthly_prices.loc[yr.strftime("%Y")]["low"].min())
-        low_prices.append(low)
-        eps = eps_per_year.loc[yr][-1]
-        pe_high.append(high / eps)
-        pe_low.append(low / eps)
+        low_prices[yr] = low  # build low_prices dict to convert into PD.series
+        eps = eps_per_year.loc[yr].iloc[-1]
+        pe_high[yr] = high / eps  # build pe_high dict to convert into PD.series
+        pe_low[yr] = low / eps  # build pe_low dict to convert into PD.series
         div_per_share = monthly_prices.loc[yr.strftime("%Y")]["dividend_amt"].sum()
         pct_payout = (div_per_share / eps) * 100
-        percent_payout.append(pct_payout)
+        percent_payout[yr] = pct_payout  # build %_payout dict to convert into PD.series
         h_yield = (div_per_share / low) * 100
-        high_yield.append(h_yield)
+        high_yield[yr] = h_yield  # build high_yield dict to convert into PD.series
         eps_table.add_row(
             [
-                yr,
-                f"${high:15,.2f}",
-                f"${low:15,.2f}",
-                eps,
+                yr.strftime("%Y-%b-%d"),
+                f"${high:10,.2f}",
+                f"${low:10,.2f}",
+                f"${eps:5,.3f}",
                 f"{high / eps:15,.4f}",
                 f"{low / eps:15,.4f}",
                 f"{div_per_share:15,.2f}",
@@ -211,23 +211,23 @@ def record_of_stock(eps, income_statement, daily_prices, monthly_prices):
                 f"{h_yield:15,.2f}",
             ]
         )
-    high_prices = pd.Series(high_prices)
-    low_prices = pd.Series(low_prices)
-    pe_high = pd.Series(pe_high)
-    pe_low = pd.Series(pe_low)
-    percent_payout = pd.Series(percent_payout)
-    high_yield = pd.Series(high_yield)
+    high_prices = pd.Series(high_prices).sort_values(axis=0, ascending=False)
+    low_prices = pd.Series(low_prices).sort_values(axis=0, ascending=False)
+    pe_high = pd.Series(pe_high).sort_values(axis=0, ascending=False)
+    pe_low = pd.Series(pe_low).sort_values(axis=0, ascending=False)
+    percent_payout = pd.Series(percent_payout).sort_values(axis=0, ascending=False)
+    high_yield = pd.Series(high_yield).sort_values(axis=0, ascending=False)
     eps_table.add_row(
         [
             "Averages",
             f"${high_prices.mean():15,.2f}",
             f"${low_prices.mean():15,.2f}",
-            "",
+            "---",
             f"{pe_high.mean():15,.4f}",
             f"{pe_low.mean():15,.4f}",
-            "",
+            "---",
             f"{percent_payout.mean():15,.2f}",
-            "",
+            "---",
         ]
     )
     msg.append(f"```{eps_table}```")
@@ -243,20 +243,20 @@ def record_of_stock(eps, income_statement, daily_prices, monthly_prices):
         "Field 6": 20,
     }
     # Past Sales Records  ********** get sales_percent_increase  ****************
-    sales_per_year = income_statement["annualReports"]["totalRevenue"]
+    sales_per_year = inc_statement["annualReports"]["totalRevenue"]
     # Last year and year before sales
-    recent_sales_trend = (sales_per_year[-1] + sales_per_year[-2]) / 2
+    recent_sales_trend = (sales_per_year.iloc[0] + sales_per_year.iloc[1]) / 2
     # Years 5 and 6 sales
-    past_sales_trend = (sales_per_year[0] + sales_per_year[1]) / 2
+    past_sales_trend = (sales_per_year.iloc[-1] + sales_per_year.iloc[-2]) / 2
     sales_increase = recent_sales_trend - past_sales_trend
     sales_percent_increase = sales_increase / past_sales_trend
 
     # Last year and year before EPS  ************** GET eps_percent_increase *************
-    recent_eps_mean = (eps_per_year.iloc[-1] + eps_per_year.iloc[-2]) / 2
+    recent_eps_mean = (eps_per_year.iloc[0] + eps_per_year.iloc[1]) / 2
     # Years 4 and 5 EPS
-    past_eps_mean = (eps_per_year.iloc[1] + eps_per_year.iloc[0]) / 2
+    past_eps_mean = (eps_per_year.iloc[-1] + eps_per_year.iloc[-2]) / 2
     eps_increase = recent_eps_mean - past_eps_mean
-    eps_percent_increase = eps_increase[0] / past_eps_mean[0]
+    eps_percent_increase = eps_increase.iloc[0] / past_eps_mean.iloc[0]
 
     y.add_row(
         [
@@ -281,24 +281,27 @@ def record_of_stock(eps, income_statement, daily_prices, monthly_prices):
 
 
 def trend(
-    income_statement: pd.DataFrame,
+    inc_statement: pd.DataFrame,
     eps: pd.DataFrame,
     monthly_company_prices: pd.DataFrame,
 ):
     """Build Trend section of analysis.
 
-    :param income_statement: <pandas.DatFrame>
+    :param inc_statement: <pandas.DatFrame>
     :param eps: <pandas.DatFrame>
     :param monthly_company_prices: <pandas.DatFrame>
     :return: <tuple> (<str> a message of the section to print, <list> of chart figure file names)
     """
     msg = "\n__**Trends**__"
     files = []
-    quarterly_revenue = income_statement["quarterlyReports"]
-    quarterly_revenue = quarterly_revenue["totalRevenue"]
-    quarterly_revenue = quarterly_revenue[quarterly_revenue.index >= datetime.datetime.now() - relativedelta(years=5)]
-    quarterly_eps = eps["quarterlyEarnings"]
-    quarterly_eps = quarterly_eps[quarterly_eps.index >= datetime.datetime.now() - relativedelta(years=5)]
+    quarterly_revenue = inc_statement["quarterlyReports"]["totalRevenue"]
+    # quarterly_revenue = quarterly_revenue[
+    #     quarterly_revenue.index >= datetime.datetime.now() - relativedelta(years=YRS_LOOKBACK)
+    # ]
+    quarterly_revenue.sort_index(ascending=False, inplace=True)
+    quarterly_eps = eps["quarterlyEarnings"]["reportedEPS"]
+    # quarterly_eps = quarterly_eps[quarterly_eps.index >= datetime.datetime.now() - relativedelta(years=YRS_LOOKBACK)]
+    quarterly_eps.sort_index(ascending=False, inplace=True)
     # Quarterly Revenue
     fig1, revenue_fig = plt.subplots()  # pylint: disable=W0612
     revenue_fig.set_xlabel("Date")
@@ -308,7 +311,7 @@ def trend(
     # Quarterly EPS
     eps_fig = revenue_fig.twinx()
     eps_fig.set_ylabel("EPS", color="tab:blue")
-    eps_fig.plot(quarterly_eps["reportedEPS"])
+    eps_fig.plot(quarterly_eps)
     # Price high/low
     plt.savefig("./eps_fig.jpg")
     files.append("./eps_fig.jpg")
@@ -337,12 +340,13 @@ def cash_position(balance_sheet: pd.DataFrame):
     msg = []
     annual_reports = balance_sheet["annualReports"]
     annual_reports = annual_reports[annual_reports.index >= datetime.datetime.now() - relativedelta(years=5)]
+    annual_reports.sort_index(axis=0, ascending=False, inplace=True)
     msg.append("\n__**Cash Position**__")
     cash_table = PrettyTable(
         [
             "",
-            annual_reports.index[-1].year,
-            annual_reports.index[-2].year,
+            annual_reports.index[0].year,
+            annual_reports.index[1].year,
             "Difference",
             "% Difference",
         ],
@@ -352,8 +356,8 @@ def cash_position(balance_sheet: pd.DataFrame):
     cash_table.align = "r"
     cash_table.align[""] = "l"
 
-    new_cash = annual_reports["cashAndCashEquivalentsAtCarryingValue"][-1]
-    old_cash = annual_reports["cashAndCashEquivalentsAtCarryingValue"][-2]
+    new_cash = annual_reports["cashAndCashEquivalentsAtCarryingValue"].iloc[0]
+    old_cash = annual_reports["cashAndCashEquivalentsAtCarryingValue"].iloc[1]
     diff_cash, percent_diff_cash = populate_vars(old_cash, new_cash)
     cash_table.add_row(
         [
@@ -365,8 +369,8 @@ def cash_position(balance_sheet: pd.DataFrame):
         ]
     )
 
-    new_investments = annual_reports["shortTermInvestments"][-1]
-    old_investments = annual_reports["shortTermInvestments"][-2]
+    new_investments = annual_reports["shortTermInvestments"].iloc[0]
+    old_investments = annual_reports["shortTermInvestments"].iloc[1]
     diff_investments, percent_diff_investments = populate_vars(old_investments, new_investments)
     cash_table.add_row(
         [
@@ -391,8 +395,8 @@ def cash_position(balance_sheet: pd.DataFrame):
         ]
     )
 
-    new_long_term_debt = annual_reports["longTermDebt"][-1]
-    old_long_term_debt = annual_reports["longTermDebt"][-2]
+    new_long_term_debt = annual_reports["longTermDebt"].iloc[0]
+    old_long_term_debt = annual_reports["longTermDebt"].iloc[1]
     diff_lt_debt, percent_diff_lt_debt = populate_vars(old_long_term_debt, new_long_term_debt)
     cash_table.add_row(["", "", "", "", ""])
     cash_table.add_row(
@@ -420,8 +424,8 @@ def cash_position(balance_sheet: pd.DataFrame):
     )
     # add shares outstanding
     cash_table.add_row(["", "", "", "", ""])
-    new_shares = annual_reports["commonStockSharesOutstanding"][-1]
-    old_shares = annual_reports["commonStockSharesOutstanding"][-2]
+    new_shares = annual_reports["commonStockSharesOutstanding"].iloc[0]
+    old_shares = annual_reports["commonStockSharesOutstanding"].iloc[1]
     diff_shares, percent_diff_shares = populate_vars(old_shares, new_shares)
     cash_table.add_row(
         [
@@ -451,8 +455,8 @@ def cash_position(balance_sheet: pd.DataFrame):
     avl_table = PrettyTable(
         [
             "",
-            annual_reports.index[-1].year,
-            annual_reports.index[-2].year,
+            annual_reports.index[0].year,
+            annual_reports.index[1].year,
             "Difference",
             "% Difference",
         ],
@@ -472,8 +476,8 @@ def cash_position(balance_sheet: pd.DataFrame):
         ]
     )
 
-    old_receivables = annual_reports["currentNetReceivables"][-2]
-    new_receivables = annual_reports["currentNetReceivables"][-1]
+    new_receivables = annual_reports["currentNetReceivables"].iloc[0]
+    old_receivables = annual_reports["currentNetReceivables"].iloc[-1]
     diff_receivables, percent_diff_receivables = populate_vars(old_receivables, new_receivables)
     avl_table.add_row(
         [
@@ -484,8 +488,8 @@ def cash_position(balance_sheet: pd.DataFrame):
             f"{percent_diff_receivables:.4%}",
         ]
     )
-    old_inventories = annual_reports["inventory"][-2]
-    new_inventories = annual_reports["inventory"][-1]
+    new_inventories = annual_reports["inventory"].iloc[0]
+    old_inventories = annual_reports["inventory"].iloc[1]
     diff_inventories, percent_diff_inventories = populate_vars(old_inventories, new_inventories)
     avl_table.add_row(
         [
@@ -496,8 +500,8 @@ def cash_position(balance_sheet: pd.DataFrame):
             f"{percent_diff_inventories:.4%}",
         ]
     )
-    old_other_assets = annual_reports["otherCurrentAssets"][-2]
-    new_other_assets = annual_reports["otherCurrentAssets"][-1]
+    new_other_assets = annual_reports["otherCurrentAssets"].iloc[0]
+    old_other_assets = annual_reports["otherCurrentAssets"].iloc[1]
     diff_other_assets, percent_diff_other_assets = populate_vars(old_other_assets, new_other_assets)
     avl_table.add_row(
         [
@@ -508,8 +512,8 @@ def cash_position(balance_sheet: pd.DataFrame):
             f"{percent_diff_other_assets:.4%}",
         ]
     )
-    old_current_assets = annual_reports["totalCurrentAssets"][-2]
-    new_current_assets = annual_reports["totalCurrentAssets"][-1]
+    new_current_assets = annual_reports["totalCurrentAssets"].iloc[0]
+    old_current_assets = annual_reports["totalCurrentAssets"].iloc[1]
     diff_current_assets, percent_diff_current_assets = populate_vars(old_current_assets, new_current_assets)
     avl_table.add_row(
         [
@@ -526,8 +530,8 @@ def cash_position(balance_sheet: pd.DataFrame):
     avl_table = PrettyTable(
         [
             "",
-            annual_reports.index[-1].year,
-            annual_reports.index[-2].year,
+            annual_reports.index[0].year,
+            annual_reports.index[1].year,
             "Difference",
             "% Difference",
         ],
@@ -536,8 +540,8 @@ def cash_position(balance_sheet: pd.DataFrame):
     avl_table.align = "r"
     avl_table.align[""] = "l"
     avl_table.add_row(["---Liabilities---", "", "", "", ""])
-    old_payables = annual_reports["currentAccountsPayable"][0]
-    new_payables = annual_reports["currentAccountsPayable"][-1]
+    new_payables = annual_reports["currentAccountsPayable"].iloc[0]
+    old_payables = annual_reports["currentAccountsPayable"].iloc[1]
     diff_payables, percent_diff_payables = populate_vars(old_payables, new_payables)
     avl_table.add_row(
         [
@@ -548,8 +552,8 @@ def cash_position(balance_sheet: pd.DataFrame):
             f"{percent_diff_payables:.3%}",
         ]
     )
-    old_st_debt = annual_reports["shortTermDebt"][-2]
-    new_st_debt = annual_reports["shortTermDebt"][-1]
+    new_st_debt = annual_reports["shortTermDebt"].iloc[0]
+    old_st_debt = annual_reports["shortTermDebt"].iloc[1]
     diff_st_debt, percent_diff_st_debt = populate_vars(old_st_debt, new_st_debt)
     avl_table.add_row(
         [
@@ -560,8 +564,8 @@ def cash_position(balance_sheet: pd.DataFrame):
             f"{percent_diff_st_debt:.4%}",
         ]
     )
-    old_other_liabilities = annual_reports["otherCurrentLiabilities"][-2]
-    new_other_liabilities = annual_reports["otherCurrentLiabilities"][-1]
+    new_other_liabilities = annual_reports["otherCurrentLiabilities"].iloc[0]
+    old_other_liabilities = annual_reports["otherCurrentLiabilities"].iloc[1]
     diff_other_liabilities, percent_diff_other_liabilities = populate_vars(old_other_liabilities, new_other_liabilities)
     avl_table.add_row(
         [
@@ -572,8 +576,8 @@ def cash_position(balance_sheet: pd.DataFrame):
             f"{percent_diff_other_liabilities:.3%}",
         ]
     )
-    old_current_liabilities = annual_reports["totalCurrentLiabilities"][-2]
-    new_current_liabilities = annual_reports["totalCurrentLiabilities"][-1]
+    new_current_liabilities = annual_reports["totalCurrentLiabilities"].iloc[0]
+    old_current_liabilities = annual_reports["totalCurrentLiabilities"].iloc[1]
     diff_current_liabilities, percent_diff_current_liabilities = populate_vars(
         old_current_liabilities, new_current_liabilities
     )
@@ -647,12 +651,13 @@ def revenue_growth(
     msg = "\n__**Revenue Growth**__"
     cash_flow = cash_flow["annualReports"]
     try:
-        dividend_yield = cash_flow["dividendPayout"].iloc[-1] / current_shares_outstanding
+        dividend_yield = cash_flow["dividendPayout"].iloc[0] / current_shares_outstanding
     except TypeError as e:
         logger.error(e)
         dividend_yield = 0
-    revenue = income_statement["annualReports"]
-    revenue = pd.DataFrame(revenue["totalRevenue"])
+    revenue = income_statement["annualReports"]["totalRevenue"]
+    revenue = pd.DataFrame(revenue)
+    revenue = revenue.sort_index(axis=0, ascending=True)
     revenue_diff = revenue.diff()
     revenue["change"] = revenue_diff
     revenue["%_change"] = revenue["change"].div(revenue["totalRevenue"])
@@ -661,7 +666,7 @@ def revenue_growth(
     msg += f"```{revenue}```"
     msg += f"```Average Growth: {revenue['%_change'].mean():.3%}```"
     msg += f"```div yield: {dividend_yield:.3f}```"
-    current_price = daily_prices["close"][-1]
+    current_price = daily_prices["close"].iloc[0]
     current_pe = current_price / current_eps
     msg += f"```Current P/E: {current_pe:.4f}```"
     msg += "```Growth Rate w/ Dividends: {:.3f}```".format(
@@ -679,8 +684,8 @@ def earnings_growth(cash_flow: pd.DataFrame):
     msg = "__**Earnings Growth**__"
     earnings_table = PrettyTable(["Year", "Net Income", "Change", "% Change"], float_format=".4")
     earnings_table.align = "r"
-    earning_growth = cash_flow["annualReports"]
-    earning_growth = pd.DataFrame(earning_growth["netIncome"])
+    earning_growth = pd.DataFrame(cash_flow["annualReports"]["netIncome"])
+    earning_growth = earning_growth.sort_index(axis=0, ascending=True)
     # earnings_growth['Change'] = earnings_growth.diff()
     # earnings_growth['% Change'] = earnings_growth['Change'].div(earnings_growth['netIncome'])
     last_year = None
@@ -760,25 +765,25 @@ def risk_reward(
     :return:
     """
     msg = "\n__**Evaluating Risk & Reward**__"
-    present_price = float(daily_prices["close"][-1])
+    present_price = float(daily_prices["close"].iloc[0])
     files = []
     # Build PE High
     yearly_eps = eps["annualEarnings"]
-    yearly_eps = yearly_eps[yearly_eps.index >= datetime.datetime.now() - relativedelta(years=5)]
+    yearly_eps = yearly_eps[yearly_eps.index >= datetime.datetime.now() - relativedelta(years=YRS_LOOKBACK)]
     quarterly_eps = eps["quarterlyEarnings"]
-    quarterly_eps = quarterly_eps[quarterly_eps.index >= datetime.datetime.now() - relativedelta(years=5)]
-    pe_high = []
+    quarterly_eps = quarterly_eps[quarterly_eps.index >= datetime.datetime.now() - relativedelta(years=YRS_LOOKBACK)]
+    pe_high = {}
     div_per_share = []
     for yr in yearly_eps.index:
         high = float(monthly_company_prices.loc[yr.strftime("%Y")]["high"].max())
-        newest_eps = yearly_eps.loc[yr.strftime("%Y")]["reportedEPS"][-1]
+        newest_eps = yearly_eps.loc[yr.strftime("%Y")]["reportedEPS"].iloc[0]
         div_per_share.append(monthly_company_prices.loc[yr.strftime("%Y")]["dividend_amt"].sum())
-        pe_high.append(high / newest_eps)
-    pe_high = pd.Series(pe_high, index=yearly_eps.index)
+        pe_high[yr] = high / newest_eps
+    pe_high = pd.Series(pe_high)
     div_per_share = pd.Series(div_per_share, index=yearly_eps.index)
     # filter daily_prices to last 5 years
-    daily_prices = daily_prices[daily_prices.index >= datetime.datetime.now() - relativedelta(years=5)]
-    future_five_years = datetime.datetime.now() + relativedelta(years=5)
+    daily_prices = daily_prices[daily_prices.index >= datetime.datetime.now() - relativedelta(years=YRS_LOOKBACK)]
+    future_five_years = datetime.datetime.now() + relativedelta(years=YRS_LOOKBACK)
 
     # Build EPS prediction
     time = quarterly_eps.index.tolist()
@@ -797,7 +802,7 @@ def risk_reward(
     quarterly_eps = pd.DataFrame(tmp_info, index=time)
     quarterly_eps.index.name = "date"
     quarterly_eps.index = pd.to_datetime(time)
-    quarterly_eps.sort_index(ascending=True, inplace=True)
+    quarterly_eps.sort_index(axis=0, ascending=True, inplace=True)
     quarterly_eps.plot()
     plt.savefig("./eps_pred_fig.jpg")
     files.append("./eps_pred_fig.jpg")
@@ -823,7 +828,7 @@ def risk_reward(
     quarterly_revenue = pd.DataFrame(tmp_info, index=time)
     quarterly_revenue.index.name = "date"
     quarterly_revenue.index = pd.to_datetime(time)
-    quarterly_revenue.sort_index(ascending=True, inplace=True)
+    quarterly_revenue.sort_index(axis=0, ascending=True, inplace=True)
     # Plot revenue and prediction
     quarterly_revenue.plot()
     plt.savefig("./revenue_pred_fig.jpg")
@@ -838,7 +843,7 @@ def risk_reward(
     #                                  pd.to_numeric(company_data['shares_outstanding'].iloc[-1]))
 
     # Build High Price Prediction
-    msg += f"""\n**HIGH PRICE - NEXT 5 YEARS**
+    msg += f"""\n**HIGH PRICE - NEXT {YRS_LOOKBACK} YEARS**
 ```Linear Regression of Highs: {forcast_high}```\n"""
 
     # Build Low Price Predictions
@@ -885,7 +890,7 @@ def risk_reward(
     high_prices = pd.DataFrame(tmp_info, index=time)
     high_prices.index.name = "date"
     high_prices.index = pd.to_datetime(time)
-    high_prices.sort_index(ascending=True, inplace=True)
+    high_prices.sort_index(axis=0, ascending=True, inplace=True)
     high_prices.plot()
     plt.savefig("./high_price_pred_fig.jpg")
     files.append("./high_price_pred_fig.jpg")
@@ -896,7 +901,7 @@ def risk_reward(
     avg_low = daily_prices["low"].mean()
     # Calculate Dividend low
     try:
-        price_dividend = pd.to_numeric(div_per_share.iloc[-1]) / (high_yield / 100)
+        price_dividend = pd.to_numeric(div_per_share.iloc[0]) / (high_yield / 100)
     except ValueError as e:
         logger.error(e)
         price_dividend = None
@@ -978,15 +983,29 @@ async def run(message, ticker, alphavantage_key=None):
     :param alphavantage_key: Alphavantage API key
     :return:
     """
-    # Get Company Data
+    # Get and sort Company Data
     income_statement = await alpha.get_alphavantage_income_statement(ticker, alphavantage_key)
+    income_statement["annualReports"].sort_index(axis=0, ascending=False, inplace=True)
+    income_statement["quarterlyReports"].sort_index(axis=0, ascending=False, inplace=True)
+
     balance_sheet = await alpha.get_alphavantage_balance_sheet(ticker, alphavantage_key)
+    balance_sheet["quarterlyReports"].sort_index(axis=0, ascending=False, inplace=True)
+    balance_sheet["annualReports"].sort_index(axis=0, ascending=False, inplace=True)
+
     earnings = await alpha.get_alphavantage_earnings(ticker, alphavantage_key)
+    earnings["quarterlyEarnings"].sort_index(axis=0, ascending=False, inplace=True)
+    earnings["annualEarnings"].sort_index(axis=0, ascending=False, inplace=True)
+
     cash_flow = await alpha.get_alphavantage_cash_flow(ticker, alphavantage_key)
+    cash_flow["annualReports"].sort_index(axis=0, ascending=False, inplace=True)
+    cash_flow["quarterlyReports"].sort_index(axis=0, ascending=False, inplace=True)
+
     # Get company stock prices
     monthly_company_prices = await alpha.get_monthly_alphavantage_company_prices(ticker, alphavantage_key)
+    monthly_company_prices.sort_index(axis=0, ascending=False, inplace=True)
     daily_company_prices = await alpha.get_daily_alphavantage_company_prices(ticker, alphavantage_key)
-
+    daily_company_prices.sort_index(axis=0, ascending=False, inplace=True)
+    # TODO normalize dates for bug
     # Build and send report components
     await utils.send_message_in_chunks(message.channel, past_sales_records(income_statement["annualReports"]))
     await message.channel.send(past_eps(earnings["annualEarnings"]))
@@ -1004,8 +1023,8 @@ async def run(message, ticker, alphavantage_key=None):
             daily_company_prices,
             cash_flow,
             income_statement,
-            earnings["quarterlyEarnings"]["reportedEPS"][-1],
-            balance_sheet["annualReports"]["commonStockSharesOutstanding"][-1],
+            earnings["quarterlyEarnings"]["reportedEPS"].iloc[0],  # new reported EPS
+            balance_sheet["annualReports"]["commonStockSharesOutstanding"].iloc[0],  # new reported stock outstanding
         )
     )
     await message.channel.send(earnings_growth(cash_flow))
@@ -1017,7 +1036,7 @@ async def run(message, ticker, alphavantage_key=None):
         monthly_company_prices,
         income_statement,
         high_yield,  # high yield from EPS chart
-        balance_sheet["annualReports"]["commonStockSharesOutstanding"][-1],
+        # balance_sheet["annualReports"]["commonStockSharesOutstanding"].iloc[0],
     )
     await message.channel.send(msg)
     for fig in charts:
