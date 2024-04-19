@@ -1,8 +1,12 @@
 [bot]
 run = TODO
+logging_level = <Debug, Info, Error, Warning, Critical>
 [discord]
 token = *discord token*
 discordAppID = *discord App ID*
 discordPublicKey = *discord API key*
+[slack]
+oauth = *oauth*
+signing_secret = *secret*
 [alphavantage]
 key = *alphavantage API key*
