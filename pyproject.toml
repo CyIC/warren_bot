@@ -20,6 +20,9 @@ classifiers = [
     'Project-URL :: https://github.com/CyIC/warren_bot'
 ]
 
+[tool.poetry.scripts]
+warren_bot = "warren_bot:run"
+
 [tool.poetry.dependencies]
 python = "^3.10"
 discord = "^2.3.2"
