@@ -13,8 +13,6 @@ import requests
 from jinja2 import Environment, select_autoescape, FileSystemLoader
 from xhtml2pdf import pisa
 
-import warren_bot
-
 try:
     import ConfigParser as config_parser  # noqa: N813
 except:  # noqa: E722 pylint: disable=bare-except
@@ -345,7 +343,6 @@ def draw_club_report(
             stock_info=stock_info,
             stock_charts=stock_charts,
             portfolio_perfomrance_chart=portfolio_performance_chart,
-            version=warren_bot.__version__,
             avail_capital=f"{avail_capital:,.2f}",
             min_investment=f"{min_investment:,.2f}",
             market_reaction=market_reaction_chart,
@@ -448,4 +445,4 @@ def parse_args(args):
     :return:
     """
     # TODO parse the cli args
-    pass
+    return True

@@ -18,6 +18,8 @@ class StockAnalysisTestCase(unittest.TestCase):
         """Test successfull execution of record of stock method."""
         # GIVEN
         # Prepare files
+        with open("./src/tests/IBM.company_overview.json", encoding="utf-8") as file:
+            overview_data = json.load(file)
         with open("./src/tests/IBM.earnings.json", encoding="utf-8") as file:
             eps_data = json.load(file)
         with open("./src/tests/IBM.income_statement.json", encoding="utf-8") as file:
@@ -27,13 +29,21 @@ class StockAnalysisTestCase(unittest.TestCase):
         with open("./src/tests/IBM.monthly_adjusted.json", encoding="utf-8") as file:
             monthly_data = json.load(file)
         # Prepare data sources
+        overview = alv.process_alphavantage_overview(overview_data)
         eps = alv.process_alphavantage_earnings(eps_data)
         income_statement = alv.process_alphavantage_income_statement(income_data)
         daily_prices = alv.process_alphavantage_company_prices(daily_data)
         monthly_prices = alv.process_alphavantage_company_prices(monthly_data)
 
         # WHEN
-        msg, high_yield = stock_analysis.record_of_stock(eps, income_statement, daily_prices, monthly_prices)
+        msg, high_yield = stock_analysis.record_of_stock(
+            eps,
+            income_statement,
+            daily_prices,
+            monthly_prices,
+            overview["EPS"],
+            overview["PERatio"],
+        )
 
         # THEN
         self.assertIsInstance(high_yield, float)

@@ -7,8 +7,8 @@ import re
 
 import discord
 
-from warren_bot import portfolio_analysis
-from warren_bot import stock_analysis
+from . import portfolio_analysis
+from . import stock_analysis
 
 
 config = configparser.ConfigParser()
@@ -187,7 +187,7 @@ async def main():
     await portfolio_analysis.run("./cyic_stocks.csv", "./club_info.json", KEY)
 
 
-async def run():
+def run():
     CLIENT.run(TOKEN)
 
 

@@ -5,6 +5,7 @@ from asyncio import sleep
 
 import numpy as np
 import pandas as pd
+from pandas._libs.tslibs.parsing import DateParseError  # pylint: disable=E0611
 import requests
 
 
@@ -431,8 +432,12 @@ def process_alphavantage_overview(data: dict):
     view["50DayMovingAverage"] = pd.to_numeric(view["50DayMovingAverage"], "coerce")
     view["200DayMovingAverage"] = pd.to_numeric(view["200DayMovingAverage"], "coerce")
     view["SharesOutstanding"] = pd.to_numeric(view["SharesOutstanding"], "coerce")
-    view["DividendDate"] = pd.to_datetime(view["DividendDate"])
-    view["ExDividendDate"] = pd.to_datetime(view["ExDividendDate"])
+    try:
+        view["DividendDate"] = pd.to_datetime(view["DividendDate"])
+        view["ExDividendDate"] = pd.to_datetime(view["ExDividendDate"])
+    except DateParseError:
+        view["DividendDate"] = np.nan
+        view["ExDividendDate"] = np.nan
     return view
 
 

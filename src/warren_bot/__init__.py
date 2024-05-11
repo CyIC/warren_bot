@@ -6,7 +6,6 @@ Copyright (c) 2024 Cypress Investment Club
 Full license in LICENSE.md
 """
 import logging
-import sys
 import os
 
 from . import logging_config  # noqa: F401
@@ -19,6 +18,7 @@ __email__ = "simmonsj@jasimmonsv.com"
 __version__ = "0.1.0"
 
 # Default
+CLI_ARGS = None
 CONFIG = {
     "config_file": "bot_config.ini",
     "logging_level": "INFO",
@@ -43,8 +43,8 @@ def process_config():
     3. config_file
     4. then default
     """
-    global CLI_ARGS, CONFIG  # pylint: disable=global-variable-undefined
-    CLI_ARGS, unknown = utils.parse_args(sys.argv[1:])  # pylint: disable=assignment-from-no-return,unused-variable
+    global CONFIG  # , CLI_ARGS  # pylint: disable=global-variable-undefined,global-statement
+    # CLI_ARGS, unknown = utils.parse_args(sys.argv[1:])  # TODO pylint: disable=assignment-from-no-return,unused-variable
     # CONFIG FILE :: overwriting defaults
     # Check if config file was passed in CLI arguments
     LOGGER.debug("cli_args %s", CLI_ARGS)
