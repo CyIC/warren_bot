@@ -23,6 +23,7 @@ COMMANDS_HELP = {
     "!stock_report": "!stock_report <ticker> will return club worksheet calculations of the "
     "provided stock ticker. (also !sr)",
     "!club_report": "!club_report will deliver the current status of the investment club. (also !cr)",
+    "!terms_of_use": "!terms_of_use will display the current terms of use you (as the user) agree to abid by.",
     "!bug_report": "!bug_report will ",
 }
 
@@ -71,6 +72,16 @@ async def help_command(message):
     # Send the message
     help_message = HELP_INFO + "\n" + """```""" + command_list + """```"""
     await message.reply(help_message)
+
+
+async def display_terms_of_use(message):
+    """Display terms of use.
+
+    :param message:
+    :return:
+    """
+    msg = """By using this application, you agree to be bound by the Terms of Use. https://github.com/CyIC/warren_bot/blob/main/terms_of_use.md"""  # pylint: disable=line-too-long
+    await message.reply(f"\n{msg}")
 
 
 async def run_stock_report(message):
@@ -124,7 +135,7 @@ async def run_report_bug(message):
     """
     await message.add_reaction("⏳")
     try:
-        # Display bug report
+        # TODO Display bug report
         try:
             await message.clear_reaction("⏳")
         except discord.errors.Forbidden:
