@@ -7,6 +7,7 @@ Full license in LICENSE.md
 """
 import logging
 import os
+import sys
 
 from . import logging_config  # noqa: F401
 
@@ -43,8 +44,8 @@ def process_config():
     3. config_file
     4. then default
     """
-    global CONFIG  # , CLI_ARGS  # pylint: disable=global-variable-undefined,global-statement
-    # CLI_ARGS, unknown = utils.parse_args(sys.argv[1:])  # TODO pylint: disable=assignment-from-no-return,unused-variable
+    global CONFIG, CLI_ARGS  # pylint: disable=global-variable-undefined,global-statement
+    CLI_ARGS, unknown = utils.parse_args(sys.argv[1:])  # TODO pylint: disable=assignment-from-no-return,unused-variable
     # CONFIG FILE :: overwriting defaults
     # Check if config file was passed in CLI arguments
     LOGGER.debug("cli_args %s", CLI_ARGS)

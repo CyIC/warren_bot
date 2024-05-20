@@ -129,6 +129,7 @@ async def get_current_sec_10k_revenue(cik: str):
     :param cik:
     :return:
     """
+    revenue = None
     url = f"https://data.sec.gov/api/xbrl/companyfacts/CIK{fix_cik(cik)}.json"
     headers = {
         "user-agent": "Cypress Investment Club simmonsj@jasimmonsv.com",
@@ -445,4 +446,4 @@ def parse_args(args):
     :return:
     """
     # TODO parse the cli args
-    return True
+    return args, "unknown"
