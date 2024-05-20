@@ -5,6 +5,7 @@ See LICENSE.md for license info.
 """
 import logging.config
 import os
+import sys  # noqa: F401 pylint: disable=unused-import
 
 from pythonjsonlogger import jsonlogger  # noqa: F401 pylint: disable=unused-import
 
@@ -49,7 +50,7 @@ LOGGING = {
     "handlers": {
         "stdout": {
             "class": "logging.StreamHandler",
-            "stream": "extr://sysstdout",
+            "stream": "ext://sys.stdout",
             "formatter": "json",
         }
     },

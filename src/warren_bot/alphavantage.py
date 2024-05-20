@@ -5,6 +5,7 @@ from asyncio import sleep
 
 import numpy as np
 import pandas as pd
+from pandas._libs.tslibs.parsing import DateParseError  # pylint: disable=E0611
 import requests
 
 
@@ -25,13 +26,13 @@ async def get_alphavantage_data(function: str, symbol: str, key: str, outputsize
     url = "https://www.alphavantage.co/query?function={funct}&symbol={symbol}&apikey={key}&outputsize={outputsize}".format(  # pylint: disable=C0301
         funct=function, key=key, symbol=symbol, outputsize=outputsize
     )
-    r = requests.get(url, timeout=30).json()
-    if r.get("Note") is not None:
+    resp = requests.get(url, timeout=30).json()
+    if resp.get("Note") is not None:
         await sleep(60)
-        r = requests.get(url, timeout=30).json()
-    elif r.get("Information") is not None:
+        resp = requests.get(url, timeout=30).json()
+    elif resp.get("Information") is not None:
         raise ConnectionError("Daily Alphavantage API Limit Reached!")
-    return r
+    return resp
 
 
 def process_alphavantage_annual_company_info(income_statement, balance_sheet):
@@ -150,7 +151,7 @@ def process_alphavantage_income_statement(data: dict):
         income.set_index("fiscalDateEnding", inplace=True)
         income = income.reindex()
         income.index = pd.to_datetime(income.index)
-        income.sort_index(ascending=True, inplace=True)
+        income.sort_index(ascending=False, inplace=True)
         income["grossProfit"] = pd.to_numeric(income["grossProfit"], "coerce")
         income["totalRevenue"] = pd.to_numeric(income["totalRevenue"], "coerce")
         income["costOfRevenue"] = pd.to_numeric(income["costOfRevenue"], "coerce")
@@ -431,8 +432,12 @@ def process_alphavantage_overview(data: dict):
     view["50DayMovingAverage"] = pd.to_numeric(view["50DayMovingAverage"], "coerce")
     view["200DayMovingAverage"] = pd.to_numeric(view["200DayMovingAverage"], "coerce")
     view["SharesOutstanding"] = pd.to_numeric(view["SharesOutstanding"], "coerce")
-    view["DividendDate"] = pd.to_datetime(view["DividendDate"])
-    view["ExDividendDate"] = pd.to_datetime(view["ExDividendDate"])
+    try:
+        view["DividendDate"] = pd.to_datetime(view["DividendDate"])
+        view["ExDividendDate"] = pd.to_datetime(view["ExDividendDate"])
+    except DateParseError:
+        view["DividendDate"] = np.nan
+        view["ExDividendDate"] = np.nan
     return view
 
 

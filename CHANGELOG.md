@@ -9,11 +9,13 @@ adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+    * Add [OSS metadata](https://github.com/Netflix/osstracker/tree/master)
 
 ### Changed
     * Moved Logging control to seperate file
     * Fix linting formatting errors
     * Move bumpversion rules to pyproject.toml
+    * Updated README.md
 
 ### Fixed
 

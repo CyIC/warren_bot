@@ -1,0 +1,126 @@
+name: build and test python package
+
+on:
+  push:
+  pull_request:
+      # The branches below must be a subset of the branches above
+      branches:
+        - main
+        - master
+jobs:
+    pylint:
+        name: Pylint
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                python-version: ["3.11"]
+                poetry-version: ["1.8.2"]
+        steps:
+            - uses: actions/checkout@v3
+            - name: Set up Python ${{ matrix.python-version }}
+              uses: actions/setup-python@v3
+              with:
+                  python-version: ${{ matrix.python-version }}
+            - uses: abatilo/actions-poetry@v2
+              with:
+                  poetry-version: ${{ matrix.poetry-version }}
+            - name: Install dependencies
+              run: |
+                   poetry install
+            - name: Analysing the code with pylint
+              run: |
+                   poetry run pylint src
+    flake8:
+        name: Flake8
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                python-version: ["3.11"]
+                poetry-version: ["1.8.2"]
+        steps:
+            - uses: actions/checkout@v3
+            - name: Set up Python ${{ matrix.python-version }}
+              uses: actions/setup-python@v3
+              with:
+                  python-version: ${{ matrix.python-version }}
+            - uses: abatilo/actions-poetry@v2
+              with:
+                  poetry-version: ${{ matrix.poetry-version }}
+            - name: Install dependencies
+              run: |
+                   poetry install
+            - name: Analysing the code with flake8
+              run: |
+                   poetry run flake8 --ignore=E501,D401 src/warren_bot setup.py
+    pytest:
+        name: Pytest
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                python-version: [ "3.9", "3.10", "3.11", "3.12" ]
+                poetry-version: [ "1.8.2" ]
+        steps:
+            - uses: actions/checkout@v3
+            - name: Set up Python ${{ matrix.python-version }}
+              uses: actions/setup-python@v5
+              with:
+                  python-version: ${{ matrix.python-version }}
+            - uses: abatilo/actions-poetry@v2
+              with:
+                  poetry-version: ${{ matrix.poetry-version }}
+            - name: Install dependencies
+              run: |
+                  poetry install
+            - name: Test with pytest
+              run: |
+                  poetry run pytest --cov=src/warren_bot src/tests/ --junitxml=junit/test-results-${{ matrix.python-version }}.xml --cov-report=xml --cov-report=html
+            - name: Upload pytest results
+              uses: actions/upload-artifact@v4
+              with:
+                  name: pytest-results-${{ matrix.python-version }}
+                  path: junit/test-results-${{ matrix.python-version }}.xml
+              if: ${{ always() }}
+    deploy:
+        name: Deploy
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                python-version: [ "3.11" ]
+                poetry-version: [ "1.8.2" ]
+        needs:
+            - flake8
+            - pylint
+            - pytest
+        environment: production
+        steps:
+            - uses: actions/checkout@v4
+            - name: Set up Python ${{ matrix.python-version }}
+              uses: actions/setup-python@v4
+              with:
+                  python-version: ${{ matrix.python-version }}
+            - uses: abatilo/actions-poetry@v2
+              with:
+                  poetry-version: ${{ matrix.poetry-version }}
+            - name: Build app
+              run: |
+                  poetry build
+            - name: Install doctl
+              uses: digitalocean/action-doctl@v2
+              with:
+                  token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+            - name: Delete existing chatbot
+              run: doctl compute droplet delete -f warrenbot
+            - name: Deploy new chatbot
+              run: doctl compute droplet create --image debian-12-x64 --size s-1vcpu-1gb --region nyc1 --ssh-keys git-user --user-data-file <path-to-your-cloud-init-file> --tag-names 'discord,chatbot' --wait warrenbot
+            - name: Set up SSH key
+              run: |
+                env
+                mkdir -p ~/.ssh
+                echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+                chmod 600 ~/.ssh/id_rsa
+                ssh-keyscan -p 22 ${{ secrets.ARTIFACT_HOST }} >> ~/.ssh/known_hosts
+            - name: Transfer and start app
+              run: |
+                  whoami
+
