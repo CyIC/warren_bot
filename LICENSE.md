@@ -199,3 +199,8 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+
+
+# Data Sources
+This product uses the FRED® API but is not endorsed or certified by the Federal Reserve Bank of St. Louis.
+https://fred.stlouisfed.org/docs/api/terms_of_use.html

@@ -80,36 +80,6 @@ jobs:
                   name: pytest-results-${{ matrix.python-version }}
                   path: junit/test-results-${{ matrix.python-version }}.xml
               if: ${{ always() }}
-    build:
-        name: Build
-        strategy:
-            fail-fast: false
-            matrix:
-                python-version: ["3.11"]
-                poetry-version: ["1.8.2"]
-        runs-on: ubuntu-latest
-        environment: production
-        needs:
-            - flake8
-            - pylint
-            - pytest
-        steps:
-            - uses: actions/checkout@v4
-            - name: Set up Python ${{ matrix.python-version }}
-              uses: actions/setup-python@v4
-              with:
-                python-version: ${{ matrix.python-version }}
-            - uses: abatilo/actions-poetry@v2
-              with:
-                poetry-version: ${{ matrix.poetry-version }}
-            - name: Build app
-              run: |
-                   poetry build
-            - name: Upload build results
-              uses: actions/upload-artifact@v4
-              with:
-                  path: dist/**
-              if: ${{ always() }}
     deploy:
         name: Deploy
         runs-on: ubuntu-latest
