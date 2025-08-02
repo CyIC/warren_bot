@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=C0116, W0511
 """Module to get and process Alphavantage information into Pandas data structures."""
+import random
 from asyncio import sleep
 
 import numpy as np
@@ -9,8 +10,8 @@ from pandas._libs.tslibs.parsing import DateParseError  # pylint: disable=E0611
 import requests
 
 
-async def get_alphavantage_data(function: str, symbol: str, key: str, outputsize: str = "compact"):
-    """Make https API call to Alphavantage.
+async def get_alphavantage_data(function: str, symbol: str, key: str, outputsize: str = "compact", max_retries: int = 3):
+    """Make https API call to Alphavantage with efficient exponential backoff.
 
     https://www.alphavantage.co/documentation
 
@@ -20,19 +21,38 @@ async def get_alphavantage_data(function: str, symbol: str, key: str, outputsize
     :param symbol: (str) Company stock ticker
     :param key: (str) Alphavantage api key
     :param outputsize: (str) alphavantage passed variable
+    :param max_retries: (int) maximum number of retry attempts
     :return: <dict> json of alphavantage data
     """
     function = str.upper(function)
     url = "https://www.alphavantage.co/query?function={funct}&symbol={symbol}&apikey={key}&outputsize={outputsize}".format(  # pylint: disable=C0301
         funct=function, key=key, symbol=symbol, outputsize=outputsize
     )
-    resp = requests.get(url, timeout=30).json()
-    if resp.get("Note") is not None:
-        await sleep(60)
+    
+    for attempt in range(max_retries + 1):
         resp = requests.get(url, timeout=30).json()
-    elif resp.get("Information") is not None:
-        raise ConnectionError("Daily Alphavantage API Limit Reached!")
-    return resp
+        
+        # Check for rate limiting response
+        if resp.get("Note") is not None:
+            if attempt < max_retries:
+                # Exponential backoff with jitter: base delay increases exponentially, jitter adds randomness
+                base_delay = min(2 ** attempt, 30)  # Cap at 30 seconds
+                jitter = random.uniform(0.1, 0.5)  # Add 10-50% jitter
+                delay = base_delay + jitter
+                await sleep(delay)
+                continue
+            else:
+                raise ConnectionError(f"Rate limited after {max_retries} retries")
+        
+        # Check for daily limit
+        elif resp.get("Information") is not None:
+            raise ConnectionError("Daily Alphavantage API Limit Reached!")
+        
+        # Success - return the response
+        return resp
+    
+    # This shouldn't be reached, but just in case
+    raise ConnectionError("Max retries exceeded")
 
 
 def process_alphavantage_annual_company_info(income_statement, balance_sheet):
