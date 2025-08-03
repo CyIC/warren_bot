@@ -1,25 +1,19 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=C0116, W0511
 """Collection of useful utilities for warren_bot including getting data from alphavantage and processing
-data structures."""
+data structures. Also includes secure configuration management."""
 import datetime
 import logging
 import os
-from argparse import ArgumentParser
 from asyncio import sleep
+from typing import Dict, Any, Optional
 
 import pandas as pd
 import requests
 from jinja2 import Environment, select_autoescape, FileSystemLoader
 from xhtml2pdf import pisa
 
-try:
-    import ConfigParser as config_parser  # noqa: N813
-except:  # noqa: E722 pylint: disable=bare-except
-    import configparser as config_parser
-
 # noqa: W503
-
 color_scheme = {
     "index": "#B6B2CF",
     "etf": "#2D3ECF",
@@ -359,91 +353,206 @@ def draw_club_report(
         raise err
 
 
-def process_config_file(cfg_obj=None):
-    """Process passed config file and overwritten passed config dict.
+# Configuration Management Functions
+class ConfigurationError(Exception):
+    """Raised when configuration is invalid or missing required values."""
 
-    :param cfg_obj: config object
-        cfg_obj = {
-            "config_file": "./bot_config.ini",
-            "logging_level": "INFO",
-            "discord": {
-                "token": "",
-                "discord_app_id": "",
-                "discord_public_key": "",
-            },
-            "alphavantage": {"key": ""},
-        }
-    :return: overwritten config dict
+    # pylint: disable=W0107
+    pass
+
+
+def load_env_config(existing_configuration_dictionary: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    # pylint: disable=too-many-branches
+    """Load configuration from environment variables.
+
+    Reads all required configuration values from environment variables
+    and updates the provided configuration dictionary or creates a new one.
+
+    {
+        "logging_level": "INFO",
+        "debug": False,
+        "club_info_file": {},
+        "club_stocks_file": {},
+        "discord": {
+            "token": "",
+            "app_id": "",
+            "public_key": "",
+        },
+        "alphavantage": {
+            "key": "",
+        },
+        "slack": {
+            "oauth_token": "",
+            "signing_secret": "",
+        },
+        "fred": {
+            "api_key": "",
+        },
+    }
+
+    if os.getenv('CLUB_INFO_FILE'):
+        configuration_dictionary["application"]["club_info_file_path"] = os.getenv('CLUB_INFO_FILE')
+
+    if os.getenv('CLUB_STOCKS_FILE'):
+        configuration_dictionary["application"]["club_stocks_file_path"] = os.getenv('CLUB_STOCKS_FILE')
+
+
+    Args:
+        existing_configuration_dictionary: Optional existing configuration dictionary to update
+
+    Returns:
+        Dict containing all configuration values (updated or newly created)
+
+    Raises:
+        ConfigurationError: If required environment variables are missing
     """
-    # Check that config file exists
-    LOGGER.debug("Config file used: %s", cfg_obj["config_file"])
-    if not os.path.exists(cfg_obj["config_file"]):
-        LOGGER.warning("COnfig file does not exist: %s", cfg_obj["config_file"])
-        return cfg_obj
-    config = config_parser.ConfigParser()
-    config.read(cfg_obj["config_file"])
-    # Discord
-    try:
-        cfg_obj["discord"]["token"] = config.get("discord", "token")
-        cfg_obj["discord"]["discord_app_id"] = config.get("discord", "discordAppId")
-        cfg_obj["discord"]["discord_public_key"] = config.get("discord", "discordPublicKey")
-    except config_parser.NoOptionError:
-        LOGGER.error("Could not read discord configuration.")
-    # Alphavantage
-    try:
-        cfg_obj["alphavantage"]["key"] = config.get("alphavantage", "key")
-    except config_parser.NoOptionError:
-        LOGGER.error("Could not read alphavantage configuration.")
-    # Logging Level
-    try:
-        cfg_obj["logging_level"] = config.get("bot", "logging_level")
-    except config_parser.NoOptionError:
-        LOGGER.error("Could not read logging_level configuration.")
-    return cfg_obj
+    required_environment_variables = {"DISCORD_TOKEN": "Discord bot token", "ALPHAVANTAGE_KEY": "Alpha Vantage API key"}
 
+    # optional_environment_variables = {
+    #     "DISCORD_APP_ID": "Discord application ID",
+    #     "DISCORD_PUBLIC_KEY": "Discord public key",
+    #     "SLACK_OAUTH": "Slack OAuth token",
+    #     "SLACK_SIGNING_SECRET": "Slack signing secret",
+    #     "FRED_KEY": "FRED API key",
+    #     "LOGGING": "Logging level (INFO, DEBUG, WARNING, ERROR)",
+    #     "DEBUG_MODE": "Debug mode flag (true/false)",
+    #     "CONFIG_FILE": "Configuration file path",
+    #     "CLUB_INFO_FILE": "Club information file path",
+    #     "CLUB_STOCKS_FILE": "Club stocks CSV file path",
+    # }
 
-def process_env_variables(config):  # pylint: disable=too-many-branches
-    """Process OS environmental variables.
-
-    :param config: config object
-        config = {
-            "config_file": "./bot_config.ini",
+    # Start with existing configuration or create new one
+    if existing_configuration_dictionary is None:
+        configuration_dictionary = {
+            "debug": False,
             "logging_level": "INFO",
-            "discord": {
-                "token": "",
-                "discord_app_id": "",
-                "discord_public_key": "",
-            },
-            "alphavantage": {"key": ""},
+            "club_info_file": {},
+            "club_stocks_file": {},
+            "discord": {},
+            "alphavantage": {},
+            "slack": {},
+            "fred": {},
+            "application": {},
         }
-    :return: overwritten config dict
-    """
-    # os_env = ["WARREN_CONFIG", "DISCORD_TOKEN", "DISCORD_APP_ID", "DISCORD_PUB_KEY", "ALPHAVANTAGE_KEY"]
-    if os.getenv("WARREN_CONFIG"):
-        config["config_file"] = os.getenv("WARREN_CONFIG")
+    else:
+        configuration_dictionary = existing_configuration_dictionary.copy()
+        # Ensure required sections exist
+        configuration_dictionary.setdefault("discord", {})
+        configuration_dictionary.setdefault("alphavantage", {})
+        configuration_dictionary.setdefault("slack", {})
+        configuration_dictionary.setdefault("fred", {})
+        configuration_dictionary.setdefault("application", {})
+
+    # Validate required environment variables exist
+    missing_required_variables = []
+    for environment_variable_name, description in required_environment_variables.items():
+        if not os.getenv(environment_variable_name):
+            missing_required_variables.append(f"{environment_variable_name} ({description})")
+
+    if missing_required_variables:
+        error_message = f"Missing required environment variables: {', '.join(missing_required_variables)}"
+        LOGGER.error(error_message)
+        raise ConfigurationError(error_message)
+
+    # Update configuration dictionary with environment variables
     if os.getenv("DISCORD_TOKEN"):
-        config["discord"]["token"] = os.getenv("DISCORD_TOKEN")
-    # TODO finish for all os_env
-    return config
+        configuration_dictionary["discord"]["token"] = os.getenv("DISCORD_TOKEN")
+
+    if os.getenv("DISCORD_APP_ID"):
+        configuration_dictionary["discord"]["app_id"] = os.getenv("DISCORD_APP_ID")
+
+    if os.getenv("DISCORD_PUBLIC_KEY"):
+        configuration_dictionary["discord"]["public_key"] = os.getenv("DISCORD_PUBLIC_KEY")
+
+    if os.getenv("ALPHAVANTAGE_KEY"):
+        configuration_dictionary["alphavantage"]["key"] = os.getenv("ALPHAVANTAGE_KEY")
+
+    if os.getenv("SLACK_OAUTH"):
+        configuration_dictionary["slack"]["oauth_token"] = os.getenv("SLACK_OAUTH")
+
+    if os.getenv("SLACK_SIGNING_SECRET"):
+        configuration_dictionary["slack"]["signing_secret"] = os.getenv("SLACK_SIGNING_SECRET")
+
+    if os.getenv("FRED_KEY"):
+        configuration_dictionary["fred"]["api_key"] = os.getenv("FRED_KEY")
+
+    if os.getenv("LOGGING"):
+        configuration_dictionary["logging_level"] = os.getenv("LOGGING").upper()
+
+    if os.getenv("DEBUG_MODE"):
+        configuration_dictionary["debug_mode"] = os.getenv("DEBUG_MODE", "false").lower() == "true"
+
+    if os.getenv("CLUB_INFO_FILE"):
+        configuration_dictionary["club_info_file_path"] = os.getenv("CLUB_INFO_FILE")
+
+    if os.getenv("CLUB_STOCKS_FILE"):
+        configuration_dictionary["club_stocks_file_path"] = os.getenv("CLUB_STOCKS_FILE")
+
+    # Validate logging level if it exists
+    if "logging_level" in configuration_dictionary:
+        valid_logging_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        if configuration_dictionary["logging_level"] not in valid_logging_levels:
+            LOGGER.warning(
+                "Invalid logging level '%s', defaulting to INFO. Valid levels: %s",
+                configuration_dictionary["logging_level"],
+                ", ".join(valid_logging_levels),
+            )
+            configuration_dictionary["logging_level"] = "INFO"
+
+    LOGGER.info("Configuration updated successfully from environment variables")
+    LOGGER.debug("Updated configuration keys: %s", list(configuration_dictionary.keys()))
+
+    return configuration_dictionary
 
 
-def process_cli(config: dict, cli: ArgumentParser):
+def get_config_value(configuration_dictionary: Dict[str, Any], key_path: str, default_value: Any = None) -> Any:
+    """Safely retrieve a nested configuration value.
+
+    Args:
+        configuration_dictionary: The configuration dictionary
+        key_path: Dot-separated path to the value (e.g., 'discord.token')
+        default_value: Value to return if key doesn't exist
+
+    Returns:
+        The configuration value or default_value if not found
     """
+    keys = key_path.split(".")
+    current_value = configuration_dictionary
 
-    :param config:
-    :param cli:
-    :return:
+    try:
+        for key in keys:
+            current_value = current_value[key]
+        return current_value
+    except (KeyError, TypeError):
+        LOGGER.warning("Configuration key '%s' not found, using default: %s", key_path, default_value)
+        return default_value
+
+
+def validate_config(configuration_dictionary: Dict[str, Any]) -> bool:
+    """Validate that all required configuration values are present and valid.
+
+    Args:
+        configuration_dictionary: Configuration dictionary to validate
+
+    Returns:
+        True if configuration is valid, False otherwise
     """
-    if cli.config is not None:
-        config["config_file"] = cli.config
-    # TODO finish for all parsed args
+    validation_errors = []
 
+    # Check Discord token
+    discord_token = get_config_value(configuration_dictionary, "discord.token")
+    if not discord_token or len(discord_token) < 50:  # Discord tokens are typically 59+ characters
+        validation_errors.append("Discord token appears invalid (too short or missing)")
 
-def parse_args(args):
-    """
+    # Check Alpha Vantage key
+    alphavantage_key = get_config_value(configuration_dictionary, "alphavantage.key")
+    if not alphavantage_key or len(alphavantage_key) < 10:  # Alpha Vantage keys are typically 16 characters
+        validation_errors.append("Alpha Vantage API key appears invalid (too short or missing)")
 
-    :param args:
-    :return:
-    """
-    # TODO parse the cli args
-    return args, "unknown"
+    if validation_errors:
+        for error in validation_errors:
+            LOGGER.error("Configuration validation error: %s", error)
+        return False
+
+    LOGGER.info("Configuration validation passed")
+    return True

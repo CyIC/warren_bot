@@ -126,6 +126,7 @@ def past_eps(earning):
 
 
 def record_of_stock(eps, inc_statement, daily_prices, monthly_prices, current_eps, pe_ratio):
+    # pylint: disable=too-many-positional-arguments
     """Build record of stock section of analysis.
 
     :param eps:
@@ -1000,7 +1001,7 @@ d) {dividend_low:.4f} to 1```""".format(
     return msg, files
 
 
-async def run(message, ticker, alphavantage_key=None):
+async def club_analysis(message, ticker, alphavantage_key=None):
     """Run stock analysis.
 
     :param message: <discord.message> Discord message object to make replys to
@@ -1090,3 +1091,27 @@ async def run(message, ticker, alphavantage_key=None):
         with open(fig, "rb") as fh:
             f = discord.File(fh, filename=fig)
             await message.channel.send(file=f)
+
+
+async def graham_value(message, ticker, alphavantage_key=None):
+    """This method calculates the Graham Formula from the Intelligent Investor.
+
+    V* = (EPS X (8.5+2g) x 44) / Y
+    V is Intrinsic value
+    EPS = Earnings per Share (TMM)
+    8.5 = P/E Base for no-growth company
+    g = growth rate for nex 5 years
+    4.4 = Avg Yield of AAA Corp Bonds
+    Y = Current yield of AAA Corp Bonds
+
+    :param message: <discord.message> Discord message object to make replys to
+    :param ticker: Company stock ticker
+    :param alphavantage_key: Alphavantage API key
+    :return:
+    """
+    # Get and sort Company Data
+    overview = await alpha.get_alphavantage_overview(ticker, alphavantage_key)
+    earnings = await alpha.get_alphavantage_earnings(ticker, alphavantage_key)
+    print(message)
+    # EPS = Earnings per share
+    return overview, earnings

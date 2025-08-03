@@ -25,7 +25,6 @@ warren_bot = "warren_bot.__main__:run"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-discord = "^2.3.2"
 pandas = "^2.2.2"
 requests = "^2.31.0"
 scipy = "^1.12.0"
@@ -35,6 +34,8 @@ mplfinance = "^0.12.10b0"
 xhtml2pdf = "^0.2.15"
 python-json-logger = "2.0.7"
 tabulate = "^0.9.0"
+yfinance = "^0.2.18"
+discord-py = "==2.6.0"
 
 
 [tool.poetry.group.test.dependencies]
@@ -49,8 +50,9 @@ pep8-naming = "^0.13.3"
 optional = true
 
 [tool.poetry.group.dev.dependencies]
-black = "^24.2.0"
 bump-my-version = "^0.19.0"
+black = "^25.1.0"
+tox = "^4.0.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -60,12 +62,12 @@ build-backend = "poetry.core.masonry.api"
 max-line-length = 120
 
 disable = [
-    "W0511",  # to-do tags
-    "C0209",  # consider-using-f-string
-    "R0913",  # too-many-arguments
-    "R0914",  # too-many-locals
-    "R0915",  # too-many-statements
-    "C0302",  # too-many-lines
+    "W0511", # to-do tags
+    "C0209", # consider-using-f-string
+    "R0913", # too-many-arguments
+    "R0914", # too-many-locals
+    "R0915", # too-many-statements
+    "C0302", # too-many-lines
 ]
 
 [tool.black]
@@ -80,7 +82,7 @@ tag = true
 serialize = [
     "{major}.{minor}.{patch}-{build}",
     "{major}.{minor}.{patch}",
-    ]
+]
 
 [tool.bumpversion.part.build]
 independent = true

@@ -1,10 +1,10 @@
-bot_config.ini
 club_info.json
 cyic_stocks.csv
 *.jpg
 *.png
 *.ipynb
 *.pkl
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

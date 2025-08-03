@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=C0116, W0511
 """Test stock_report module for stock analysis."""
-import unittest
 import json
+import unittest
+
 from warren_bot import alphavantage as alv
 
 # under test
 from warren_bot import stock_analysis
+
 
 # pylint: disable=E1136
 
@@ -119,12 +121,12 @@ class StockAnalysisTestCase(unittest.TestCase):
             daily_prices,
             cash_flow,
             income_statement,
-            earnings["quarterlyEarnings"]["reportedEPS"][-1],
-            balance_sheet["annualReports"]["commonStockSharesOutstanding"][-1],
+            earnings["quarterlyEarnings"]["reportedEPS"].iloc[-1],
+            balance_sheet["annualReports"]["commonStockSharesOutstanding"].iloc[-1],
         )
 
         # THEN
-        self.assertIsInstance(msg, str)
+        self.assertIsInstance(msg, tuple)
 
     def test_risk_reward(self):
         """Test cash position risk_reward module."""
@@ -154,7 +156,7 @@ class StockAnalysisTestCase(unittest.TestCase):
             earnings,
             monthly_prices,
             income_statement,
-            earnings["quarterlyEarnings"]["reportedEPS"][-1],  # stand in for highest EPS
+            earnings["quarterlyEarnings"]["reportedEPS"].iloc[-1],  # stand in for highest EPS
             # balance_sheet["annualReports"]["commonStockSharesOutstanding"][-1],
         )
         # THEN

@@ -1,27 +1,33 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=C0116, W0511
 """Discord chatbot entrypoint."""
-import configparser
 import logging
 import re
+import sys
 
 import discord
 
 from . import portfolio_analysis
 from . import stock_analysis
+from . import utilities
+from .utilities import ConfigurationError
 
-
-config = configparser.ConfigParser()
-config.read("./bot_config.ini")
-TOKEN = config["discord"]["token"]
-KEY = config["alphavantage"]["key"]
 LOGGER = logging.getLogger("discord")
+# Global configuration instance - load on module import
+# pylint: disable=broad-exception-caught
 
-DEBUG = False
+try:
+    CONFIG = utilities.load_env_config()
+    if not utilities.validate_config(CONFIG):
+        LOGGER.warning("Configuration validation failed - some features may not work correctly")
+except ConfigurationError as configuration_error:
+    LOGGER.critical("Failed to load configuration: %s", configuration_error)
+    sys.exit(1)
 
 COMMANDS_HELP = {
     "!stock_report": "!stock_report <ticker> will return club worksheet calculations of the "
     "provided stock ticker. (also !sr)",
+    "!graham_value": "!graham_value <ticker> will return the Graham Revised Valuation Formula",
     "!club_report": "!club_report will deliver the current status of the investment club. (also !cr)",
     "!terms_of_use": "!terms_of_use will display the current terms of use you (as the user) agree to abid by.",
     "!bug_report": "!bug_report will ",
@@ -85,15 +91,23 @@ async def display_terms_of_use(message):
 
 
 async def run_stock_report(message):
+    """
+
+    :param message:
+    :return:
+    """
     try:
         ticker = message.content.split(" ", 1)[1]  # Get the stock ticker
-        ticker = str.upper(ticker)
+        ticker = ticker.strip().upper()
+        if not re.match(r"^[A-Z]{1,5}$", ticker):
+            await message.reply("Invalid ticker symbol. Please use 1-5 letters.")
+            return
     except IndexError:
         await message.reply("!stock_report requires a ticker symbol.")
         return
     await message.add_reaction("⏳")
     try:
-        await stock_analysis.run(message, ticker, KEY)
+        await stock_analysis.club_analysis(message, ticker)
         await message.channel.send("\n✅ __**Stock Report Finished!**__")
     except Exception as e:
         try:
@@ -101,8 +115,9 @@ async def run_stock_report(message):
         except discord.errors.Forbidden:
             pass
         await message.add_reaction("🛑")
-        await message.reply("\n❌ __**Stock Report Failed!**__")
-        raise e
+        LOGGER.error("Stock report failed for ticker %s: %s", ticker, str(e))
+        await message.reply("❌ Stock report failed. Please try again later.")
+        # Don't re-raise - let bot continue running
 
 
 async def run_club_report(message):
@@ -112,7 +127,7 @@ async def run_club_report(message):
     """
     await message.add_reaction("⏳")
     try:
-        await portfolio_analysis.run("./cyic_stocks.csv", "./club_info.json", key=KEY)
+        await portfolio_analysis.run("./cyic_stocks.csv", "./club_info.json")
         try:
             await message.clear_reaction("⏳")
         except discord.errors.Forbidden:
@@ -121,8 +136,33 @@ async def run_club_report(message):
     except Exception as e:
         # await message.clear_reaction("⏳")
         await message.add_reaction("🛑")
-        await message.reply("\n❌ __**Portfolio Report Failed!**__")
-        raise e
+        LOGGER.error("Club report failed: %s", str(e))
+        await message.reply("\n❌ __**Club Report Failed!**__")
+
+
+async def run_graham_value(message):
+    """Use a given stock ticker to calculate the graham value
+
+    :param message: Discord Message
+    """
+    try:
+        ticker = message.content.split(" ", 1)[1]  # Get the stock ticker
+        ticker = str.upper(ticker)
+    except IndexError:
+        await message.reply("!graham_value requires a ticker symbol.")
+        return
+    await message.add_reaction("⏳")
+    try:
+        await stock_analysis.graham_value(message, ticker)
+        await message.channel.send("\n✅ __**Stock Report Finished!**__")
+    except Exception as e:
+        try:
+            await message.clear_reaction("⏳")
+        except discord.errors.Forbidden:
+            pass
+        await message.add_reaction("🛑")
+        LOGGER.error("Graham report failed for ticker %s: %s", ticker, str(e))
+        await message.reply("\n❌ __**Graham Report Failed!**__")
 
 
 async def run_report_bug(message):
@@ -188,20 +228,24 @@ async def on_message(message):
             await run_stock_report(message)
         case "!club_report" | "!cr":
             await run_club_report(message)
-        case "!bug":
-            await run_report_bug(message)
+        # case "!bug":
+        #     await run_report_bug(message)
+        case "!graham_value":
+            await run_graham_value(message)
+        case "!terms_of_use":
+            await display_terms_of_use(message)
         case _:
             await message.reply("Command not recognized")
 
 
 async def main():
-    await portfolio_analysis.run("./cyic_stocks.csv", "./club_info.json", KEY)
+    await portfolio_analysis.run("./cyic_stocks.csv", "./club_info.json")
 
 
 def run():
-    CLIENT.run(TOKEN)
+    CLIENT.run(CONFIG["discord"]["token"])
 
 
 if __name__ == "__main__":
-    CLIENT.run(TOKEN)
+    CLIENT.run(CONFIG["discord"]["token"])
     # asyncio.run(main())

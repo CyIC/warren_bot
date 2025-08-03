@@ -5,6 +5,16 @@ import numpy as np
 from scipy import stats
 
 
+def _validate_dataframe(df, required_columns=None):
+    if df is None or df.empty:
+        raise ValueError("DataFrame cannot be None or empty")
+
+    if required_columns:
+        missing_cols = set(required_columns) - set(df.columns)
+        if missing_cols:
+            raise ValueError(f"Missing required columns: {missing_cols}")
+
+
 def estimate_exp_mov_avg_volatility(prices, lmda):
     """Exponential moving average model of volatility.
 
@@ -29,7 +39,7 @@ def estimate_exp_mov_avg_volatility(prices, lmda):
     return ewm_returns.iloc[-1]
 
 
-def analyze_returns(net_returns, null_hypothesis=0.0):
+def analyze_returns(net_returns, null_hypothesis=0.0, alternative="two-sided"):
     """Perform a t-test, with the null hypothesis being that the mean return is zero.
 
     :param net_returns: Pandas Series
@@ -43,8 +53,16 @@ def analyze_returns(net_returns, null_hypothesis=0.0):
     # Hint: You can use stats.ttest_1samp() to perform the test.
     #       However, this performs a two-tailed t-test.
     #       You'll need to divde the p-value by 2 to get the results of a one-tailed p-value.
-    ret = stats.ttest_1samp(net_returns, null_hypothesis)
-    return ret[0], ret[1] / 2
+    clean_returns = net_returns.dropna()
+    t_stat, p_value = stats.ttest_1samp(clean_returns, null_hypothesis)
+
+    # One-tailed test handling
+    if alternative == "greater":
+        p_value = p_value / 2 if t_stat > 0 else 1 - p_value / 2
+    elif alternative == "less":
+        p_value = p_value / 2 if t_stat < 0 else 1 - p_value / 2
+
+    return t_stat, p_value
 
 
 def compute_log_returns(prices):
@@ -98,12 +116,13 @@ def get_most_volatile(prices):
     :return ticker: string
         ticker symbol for the most volatile stock
     """
+    _validate_dataframe(prices, required_columns=["ticker", "price"])
+
     volatile_stock = ()
     for x in prices["ticker"].unique().tolist():
         price_returns = prices[prices["ticker"] == x]
         log_returns = np.log(price_returns["price"]) - np.log(price_returns["price"].shift(1))
         returns_std = log_returns.std()
-        print("{} : {}".format(x, returns_std))
         if not volatile_stock:
             volatile_stock = (x, returns_std)
         else:
@@ -123,13 +142,14 @@ def get_top_n(prev_returns, top_n):
     :return top_stocks: DataFrame
         Top stocks for each ticker and date marked with a 1
     """
-    ret_top = prev_returns.copy()
-    for index, row in ret_top.iterrows():
-        top = row.nlargest(top_n).index
+    _validate_dataframe(prev_returns)
 
-        ret_top.loc[index] = 0
-        ret_top.loc[index, top] = 1
-    return ret_top.astype(int)
+    if top_n <= 1 or top_n > len(prev_returns.columns):
+        raise ValueError(f"top_n must be between 1 and {len(prev_returns.columns)}")
+
+    ranks = prev_returns.rank(axis=1, method="min", ascending=False)
+
+    return (ranks <= top_n).astype(int)
 
 
 def analyze_alpha(expected_portfolio_returns_by_date):
@@ -163,7 +183,9 @@ def portfolio_returns(df_long, df_short, lookahead_returns, n_stocks):
     :return portfolio_returns: DataFrame
         Expected portfolio returns for each ticker and date
     """
+    if n_stocks <= 0:
+        raise ValueError("n_stocks must be positive")
+
     long = (df_long * lookahead_returns) / n_stocks
     short = (df_short * lookahead_returns) / n_stocks
-    #     print(long)
     return long - short
