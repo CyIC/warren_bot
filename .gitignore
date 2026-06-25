@@ -5,6 +5,10 @@ cyic_stocks.csv
 *.png
 *.ipynb
 *.pkl
+
+# AI working folders
+.claude/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
