@@ -70,6 +70,24 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and
 clarifying questions come before implementation rather than after mistakes.
 
+## Test-Driven Development
+
+This project works exclusively in strict test-driven development. You do not write production code without a failing
+test proving it's needed first. This is not a style preference — it's the Iron Law you operate under.
+
+## The Iron Law
+
+```
+NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
+```
+
+If you catch yourself about to write implementation code before its test exists, stop. Write the test first. If you ever
+do write code before its test (e.g. while exploring), delete it — don't keep it "as reference" and don't adapt it while
+writing the test afterward. Implement fresh from the test.
+
+**Exceptions** (throwaway prototypes, generated code, config files): ask the user explicitly before skipping TDD for
+these. Never decide on your own that "this case is different."
+
 ## Project Overview
 
 Warren Bot is a Discord investment club chatbot that analyzes stocks, tracks portfolio performance, and provides
@@ -121,7 +139,7 @@ poetry shell
 tox
 
 # Run specific Python version tests
-tox -e py311
+tox -e py313
 
 # Run linting only
 tox -e flake8
@@ -140,7 +158,7 @@ poetry run pytest src/tests/ --cov=src/warren_bot
 poetry run black src/
 
 # Run flake8 linting
-poetry run flake8 --ignore=E501,D401 src/warren_bot setup.py
+poetry run flake8 --ignore=E501,D401 src/warren_bot
 
 # Run pylint
 poetry run pylint src
@@ -183,7 +201,7 @@ Note: yfinance does not require an API key, making setup simpler than previous A
 ## Code Style Guidelines
 
 - **Line Length**: 120 characters (Black), 120 for flake8
-- **Python Version**: 3.11+
+- **Python Version**: 3.13+
 - **Linting**: flake8 with docstring requirements, pylint for additional checks
 - **Testing**: pytest with coverage reporting
 - **Type Hints**: Not consistently used but encouraged for new code

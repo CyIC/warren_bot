@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# pylint: disable=C0116, W0511, E1121
+# pylint: disable=C0116, W0511, E1121, E1137
 """Stock Analysis functions for chatbot."""
 import datetime
 import logging
@@ -687,8 +687,7 @@ def earnings_growth(cash_flow: pd.DataFrame):
     date = earning_growth.index
     change = 0
     percent_change = 0
-    count = 0
-    for year in earning_growth["netIncome"]:
+    for count, year in enumerate(earning_growth["netIncome"]):
         if last_year is not None:
             change = year - last_year
             percent_change = change / abs(last_year)
@@ -701,7 +700,6 @@ def earnings_growth(cash_flow: pd.DataFrame):
             ]
         )
         last_year = year
-        count += 1
         # date.append(year[0])
     msg += f"```{earnings_table}```"
     return msg
@@ -741,6 +739,37 @@ Upper 1/3 = {high_low:,.2f} to {high_high:,.2f} (Sell)```
     return msg
 
 
+def _epoch_seconds(times) -> list[float]:
+    """Convert an iterable of datetimes to UNIX epoch seconds."""
+    return [moment.timestamp() for moment in times]
+
+
+def _predict_values(prediction, times) -> list[float]:
+    """Evaluate a fitted prediction at each time, returning a list of predicted values."""
+    return [prediction(moment.timestamp()) for moment in times]
+
+
+def _zone_analysis(forcast_high: float, projected_low: float | None, present_price: float) -> tuple[str, float]:
+    """Build the zoning message fragment and up-side/down-side ratio for one low estimate.
+
+    Mirrors the original inline handling: predict_low and the ratio share a try block, so a
+    failure in either yields an error fragment paired with a 0 ratio.
+
+    :param forcast_high: predicted 5-year high price
+    :param projected_low: candidate low price for this zone
+    :param present_price: current market price
+    :return: tuple of (message fragment, up-side/down-side ratio)
+    """
+    try:
+        fragment = predict_low(forcast_high, projected_low, present_price)
+        ratio = (forcast_high - present_price) / (present_price - projected_low)
+    except TypeError as e:
+        return f"```{e}```", 0
+    except AssertionError:
+        return "```NaN```", 0
+    return fragment, ratio
+
+
 def risk_reward(
     daily_prices: pd.DataFrame,
     eps: pd.DataFrame,
@@ -748,7 +777,7 @@ def risk_reward(
     income_statement: pd.DataFrame,
     high_yield: float,
 ):
-    # pylint: disable=R0915, R0912, R0914, C0209
+    # pylint: disable=R0915, R0914, C0209
     """Build Risk/Reward analysis of stock report.
 
     :param company_data:
@@ -783,13 +812,8 @@ def risk_reward(
     # Build EPS prediction
     time = quarterly_eps.index.tolist()
     # convert time to UNIX Epoch time for x values
-    tmp_time = []
-    eps_pred = []
-    for y in time:
-        tmp_time.append(y.timestamp())
-    eps_prediction = np.polynomial.polynomial.Polynomial.fit(tmp_time, quarterly_eps["reportedEPS"], 1)
-    for y in time:
-        eps_pred.append(eps_prediction(y.timestamp()))
+    eps_prediction = np.polynomial.polynomial.Polynomial.fit(_epoch_seconds(time), quarterly_eps["reportedEPS"], 1)
+    eps_pred = _predict_values(eps_prediction, time)
     est_high_eps = eps_prediction(future_five_years.timestamp())
     eps_pred = pd.Series(pd.to_numeric(eps_pred), index=pd.to_datetime(time))
     # convert arrays to DataFrame for plotting
@@ -808,17 +832,10 @@ def risk_reward(
     revenue = revenue["totalRevenue"].tolist()
     time = income_statement["quarterlyReports"].index.tolist()
     # Build prediction
-    # Convert times to Unix Epoch time for x vars for prediction
-    tmp_time = []
-    for y in time:
-        tmp_time.append(y.timestamp())
-    revenue_prediction = np.polynomial.polynomial.Polynomial.fit(tmp_time, revenue, 1)
+    revenue_prediction = np.polynomial.polynomial.Polynomial.fit(_epoch_seconds(time), revenue, 1)
     # Build revenue & prediction DataFrame
     revenue = pd.Series(revenue, index=time)
-    revenue_pred = []
-    for y in time:
-        revenue_pred.append(revenue_prediction(y.timestamp()))
-    revenue_pred = pd.Series(revenue_pred, index=time)
+    revenue_pred = pd.Series(_predict_values(revenue_prediction, time), index=time)
     tmp_info = {"revenue": revenue, "revenue_pred": revenue_pred}
     quarterly_revenue = pd.DataFrame(tmp_info, index=time)
     quarterly_revenue.index.name = "date"
@@ -845,18 +862,12 @@ def risk_reward(
     # Calculate linear regression low
     low_prices = daily_prices["low"].values.tolist()
     time = daily_prices.index.tolist()
-    tmp_time = []
-    for y in time:
-        tmp_time.append(y.timestamp())
-    low_price_prediction = np.polynomial.polynomial.Polynomial.fit(tmp_time, low_prices, 1)
+    low_price_prediction = np.polynomial.polynomial.Polynomial.fit(_epoch_seconds(time), low_prices, 1)
     lr_low = low_price_prediction(future_five_years.timestamp())
 
     # Plot Low Prices and Prediction
     low_prices = pd.Series(low_prices, index=time)
-    low_price_pred = []
-    for y in time:
-        low_price_pred.append(low_price_prediction(y.timestamp()))
-    low_price_pred = pd.Series(low_price_pred, index=time)
+    low_price_pred = pd.Series(_predict_values(low_price_prediction, time), index=time)
     tmp_info = {"low": low_prices, "low_price_pred": low_price_pred}
     low_prices = pd.DataFrame(tmp_info, index=time)
     low_prices.index.name = "date"
@@ -870,17 +881,11 @@ def risk_reward(
     # Calculate linear regression high
     high_prices = daily_prices["high"].values.tolist()
     time = daily_prices.index.tolist()
-    tmp_time = []
-    for y in time:
-        tmp_time.append(y.timestamp())
-    high_price_prediction = np.polynomial.polynomial.Polynomial.fit(tmp_time, high_prices, 1)
+    high_price_prediction = np.polynomial.polynomial.Polynomial.fit(_epoch_seconds(time), high_prices, 1)
 
     # Plot Low Prices and Prediction
     high_prices = pd.Series(high_prices, index=time)
-    high_price_pred = []
-    for y in time:
-        high_price_pred.append(high_price_prediction(y.timestamp()))
-    high_price_pred = pd.Series(high_price_pred, index=time)
+    high_price_pred = pd.Series(_predict_values(high_price_prediction, time), index=time)
     tmp_info = {"high": high_prices, "high_price_pred": high_price_pred}
     high_prices = pd.DataFrame(tmp_info, index=time)
     high_prices.index.name = "date"
@@ -912,48 +917,20 @@ def risk_reward(
     msg += "**ZONING**"
     # Predict A
     msg += "\n(a - Linear Regression)"
-    try:
-        msg += predict_low(forcast_high, lr_low, present_price)
-        lr_low = (forcast_high - present_price) / (present_price - lr_low)
-    except TypeError as e:
-        msg += f"```{e}```"
-        lr_low = 0
-    except AssertionError:
-        msg += "```NaN```"
-        lr_low = 0
+    fragment, lr_low = _zone_analysis(forcast_high, lr_low, present_price)
+    msg += fragment
     # Predict B
     msg += "\n(b - Avg Low Price of Last 5 Years)"
-    try:
-        msg += predict_low(forcast_high, avg_low, present_price)
-        avg_low = (forcast_high - present_price) / (present_price - avg_low)
-    except TypeError as e:
-        msg += f"```{e}```"
-        avg_low = 0
-    except AssertionError:
-        msg += "```NaN```"
-        avg_low = 0
+    fragment, avg_low = _zone_analysis(forcast_high, avg_low, present_price)
+    msg += fragment
     # Predict C
     msg += "\n(c - Recent Severe Market Low)"
-    try:
-        msg += predict_low(forcast_high, severe_low, present_price)
-        severe_low = (forcast_high - present_price) / (present_price - severe_low)
-    except TypeError as e:
-        msg += f"```{e}```"
-        severe_low = 0
-    except AssertionError:
-        msg += "```NaN```"
-        severe_low = 0
+    fragment, severe_low = _zone_analysis(forcast_high, severe_low, present_price)
+    msg += fragment
     # Predict D
     msg += "\n(d - Price Dividend Support)"
-    try:
-        msg += predict_low(forcast_high, price_dividend, present_price)
-        dividend_low = (forcast_high - present_price) / (present_price - price_dividend)
-    except TypeError as e:
-        msg += f"```{e}```"
-        dividend_low = 0
-    except AssertionError:
-        msg += "```NaN```"
-        dividend_low = 0
+    fragment, dividend_low = _zone_analysis(forcast_high, price_dividend, present_price)
+    msg += fragment
     # Build UP-SIDE DOWN-SIDE Ration
     msg += """\n**UP-SIDE / DOWN-SIDE RATIO (Potential Gain vs Risk of Loss)**"""
     msg += """```a) {lr_low:.4f} to 1
@@ -1017,7 +994,6 @@ async def run(message, ticker, alphavantage_key=None):
         monthly_company_prices,
         income_statement,
         high_yield,  # high yield from EPS chart
-        balance_sheet["annualReports"]["commonStockSharesOutstanding"][-1],
     )
     await message.channel.send(msg)
     for fig in charts:

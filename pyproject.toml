@@ -10,18 +10,16 @@ repository = "https://github.com/CyIC/warren_bot"
 classifiers = [
     'Programming Language :: Python',
     'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.10',
-    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.13',
     'Development Status :: 2 - Pre-Alpha',
     'Operating System :: OS Independent',
     'Intended Audience :: Financial and Insurance Industry',
     'Topic :: Utilities',
     'Natural Language :: English',
-    'Project-URL :: https://github.com/CyIC/warren_bot'
 ]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.13"
 discord = "^2.3.2"
 pandas = "^2.2.1"
 requests = "^2.31.0"
@@ -34,64 +32,168 @@ xhtml2pdf = "^0.2.15"
 python-json-logger = "2.0.7"
 
 
-[tool.poetry.group.test.dependencies]
-pytest = "^8.1.1"
-pytest-cov = "^4.1.0"
-flake8 = "^7.0.0"
-pylint = "^3.1.0"
-pep8-naming = "^0.13.3"
-
-
-[tool.poetry.group.dev]
-optional = true
-
-[tool.poetry.group.dev.dependencies]
-black = "^24.2.0"
-bump-my-version = "^0.19.0"
+# PEP 735 dependency groups: single source of truth for tooling versions.
+# Consumed by both Poetry (`poetry install --group <name>`) and tox
+# (`dependency_groups = <name>` in tox.ini). Do not duplicate these in tox.ini.
+[dependency-groups]
+test = [
+    "pytest>=8.1.1,<9",
+    "pytest-cov>=4.1.0,<5",
+]
+flake8 = [
+    "flake8>=7.0.0,<8",
+    "flake8-docstrings>=1.7.0",
+    "flake8-bugbear>=23.0.0",
+    "flake8-comprehensions>=3.14.0",
+    "flake8-simplify>=0.20.0",
+    "pep8-naming>=0.13.3,<0.14",
+]
+pylint = [
+    "pylint>=3.1.0,<4",
+]
+type = [
+    "mypy>=1.5.0",
+    "types-requests",
+    "types-python-dateutil",
+]
+security = [
+    "bandit[toml]>=1.7.0",
+    "pip-audit>=2.7.0",
+]
+format = [
+    "black>=24.2.0,<25",
+]
+coverage = [
+    "coverage[toml]>=7.0",
+]
+dev = [
+    { include-group = "coverage" },
+    { include-group = "test" },
+    { include-group = "flake8" },
+    { include-group = "pylint" },
+    { include-group = "type" },
+    { include-group = "security" },
+    { include-group = "format" },
+    "tox>=4.28",
+    "bump-my-version>=0.19.0,<0.20",
+    "pandas-stubs~=2.3.3"
+]
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
+[tool.pytest.ini_options]
+minversion = "8.1"
+pythonpath = ["src"]
+testpaths = ["src/tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--verbosity=2",
+    "--tb=short",
+    "--cov-branch",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+[tool.coverage.run]
+source = ["src/warren_bot"]
+branch = true
+omit = [
+    "src/tests/*",
+    "src/warren_bot/__main__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+show_missing = true
+precision = 2
+
 [tool.pylint]
 max-line-length = 120
 
 disable = [
-    "W0511",  # to-do tags
-    "C0209",  # consider-using-f-string
-    "R0914",  # too-many-locals
-    "R0915",  # too-many-statements
-    "C0302",  # too-many-lines
+    "W0511", # to-do tags
+    "C0209", # consider-using-f-string
+    "R0914", # too-many-locals
+    "R0915", # too-many-statements
+    "C0302", # too-many-lines
 ]
 
 [tool.black]
 line-length = 120
-target-version = ['py311']
+target-version = ['py313']
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+disallow_untyped_decorators = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = [
+    "discord.*",
+    "pandas.*",
+    "matplotlib.*",
+    "mplfinance.*",
+    "yfinance.*",
+    "prettytable.*",
+    "jinja2.*",
+]
+ignore_missing_imports = true
 
 [tool.bumpversion]
 current_version = "0.1.0"
-parse = "(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)(-(?P<build>\d+))?"
+parse = '(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)(-(?P<build>\d+))?'
 commit = true
 tag = true
 serialize = [
     "{major}.{minor}.{patch}-{build}",
     "{major}.{minor}.{patch}",
-    ]
+]
 
 [tool.bumpversion.part.build]
 independent = true
 
-[tool.bumpversion.files]
+[[tool.bumpversion.files]]
 filename = "README.md"
 search = "v{current_version}"
 replace = "v{new_version}"
 
-[tool.bumpversion.files]
+[[tool.bumpversion.files]]
 filename = "pyproject.toml"
 search = 'version = "{current_version}"'
 replace = 'version = "{new_version}"'
 
-[tool.bumpversion.files]
+[[tool.bumpversion.files]]
 filename = "CHANGELOG.md"
 search = "[Unreleased]"
 replace = "[{new_version}] - {now:%Y-%m-%d}"

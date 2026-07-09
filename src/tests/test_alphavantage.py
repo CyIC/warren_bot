@@ -403,5 +403,28 @@ class AlphavantageTestCase(unittest.TestCase):
         self.assertIn("log_return", prices.keys())
 
 
+    def test_process_annual_company_info(self):
+        """Test process_alphavantage_annual_company_info builds a dated company DataFrame."""
+        # GIVEN - raw income statement and balance sheet json
+        with open("./src/tests/IBM.income_statement.json", encoding="utf-8") as file:
+            income_statement = json.load(file)
+        with open("./src/tests/IBM.balance_sheet.json", encoding="utf-8") as file:
+            balance_sheet = json.load(file)
+
+        # WHEN
+        company_data = alpha.process_alphavantage_annual_company_info(income_statement, balance_sheet)
+
+        # THEN
+        self.assertIsInstance(company_data, pd.DataFrame)
+        self.assertEqual(company_data.index.name, "date")
+        # sorted ascending by date
+        self.assertLess(company_data.index[0], company_data.index[-1])
+        # ticker column carries the symbol
+        self.assertTrue((company_data["ticker"] == "IBM").all())
+        # key fundamental columns are present
+        for col in ("revenue", "eps", "longTermDebt", "shares_outstanding", "current_assets"):
+            self.assertIn(col, company_data.keys())
+
+
 if __name__ == "__main__":
     unittest.main()

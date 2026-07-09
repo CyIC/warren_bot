@@ -20,6 +20,58 @@ logger = logging.getLogger("discord")
 logger.setLevel(logging.DEBUG)
 
 
+def _build_meeting_valuation(close: pd.DataFrame, meeting_dates: pd.Series) -> pd.DataFrame:
+    """Pull each meeting date's closing prices into a date-indexed valuation table.
+
+    :param close: DataFrame of closes indexed by date with a column per ticker
+    :param meeting_dates: iterable of meeting date Timestamps
+    :return: DataFrame with one row per meeting date, one column per ticker
+    """
+    meeting_valuation = []
+    for date in meeting_dates:
+        meeting_valuation.append(close.T[str(date.date())])
+    return pd.DataFrame(meeting_valuation)
+
+
+def _build_stock_stats(stocks: pd.DataFrame, total_shares: float) -> pd.DataFrame:
+    """Aggregate per-ticker cost basis, share count, portfolio weight, and average cost.
+
+    :param stocks: DataFrame of individual purchase lots
+    :param total_shares: total shares held across the whole portfolio
+    :return: DataFrame of stats indexed by ticker
+    """
+    stock_stats = pd.DataFrame()
+    for x in stocks["ticker"].unique().tolist():
+        df = stocks[stocks["ticker"] == x]
+        # build stock cost basis
+        cost_basis = (df["shares"].round(6) * df["price"].round(4) + df["commission"]).sum()
+        # build weight in portfolio
+        shares = df["shares"].sum()
+        weight = (df["shares"].round(6) / total_shares).sum()
+        avg_cost = (cost_basis / df["shares"].sum()).round(6)
+        # industry = stocks['industry']
+        # sector = stocks['sector']
+        industry, sector = (None, None)  # TODO get company industry and sector
+        # company_size = stocks['company_size']
+        company_size = None  # TODO get company size util.company_size(company_revenue)
+        # Build tmp Dataframe to merge into Global DataFrame
+        other = pd.DataFrame(
+            [[x, avg_cost, shares, cost_basis, industry, sector, weight, company_size]],
+            columns=[
+                "ticker",
+                "avg_cost",
+                "shares",
+                "cost_basis",
+                "industry",
+                "sector",
+                "weight",
+                "size",
+            ],
+        )
+        stock_stats = pd.concat([stock_stats, other])
+    return stock_stats.set_index(["ticker"]).reindex()
+
+
 async def run(club_stocks_file, club_info_file, key):
     """Execute club analysis report.
 
@@ -60,46 +112,14 @@ async def run(club_stocks_file, club_info_file, key):
     close = prices.reset_index().pivot(index="date", columns="ticker", values="close")
 
     # Build table for meeting valuation dates
-    meeting_valuation = []
-    for date in meeting_dates:
-        meeting_valuation.append(close.T[str(date.date())])
-    meeting_valuation = pd.DataFrame(meeting_valuation)
+    meeting_valuation = _build_meeting_valuation(close, meeting_dates)
     # Monthly Stock Price Comparison Reporting
     last_month = meeting_valuation.iloc[-2]  # Stores last month's valuation stock prices
     this_month = meeting_valuation.iloc[-1]  # Stores this month's valuation stock prices
     percent_change = meeting_valuation.pct_change().iloc[-1]
 
     # Build Stock stats for each stock in portfolio
-    stock_stats = pd.DataFrame()
-    for x in stocks["ticker"].unique().tolist():
-        df = stocks[stocks["ticker"] == x]
-        # build stock cost basis
-        cost_basis = (df["shares"].round(6) * df["price"].round(4) + df["commission"]).sum()
-        # build weight in portfolio
-        shares = df["shares"].sum()
-        weight = (df["shares"].round(6) / total_shares).sum()
-        avg_cost = (cost_basis / df["shares"].sum()).round(6)
-        # industry = stocks['industry']
-        # sector = stocks['sector']
-        industry, sector = (None, None)  # TODO get company industry and sector
-        # company_size = stocks['company_size']
-        company_size = None  # TODO get company size util.company_size(company_revenue)
-        # Build tmp Dataframe to merge into Global DataFrame
-        other = pd.DataFrame(
-            [[x, avg_cost, shares, cost_basis, industry, sector, weight, company_size]],
-            columns=[
-                "ticker",
-                "avg_cost",
-                "shares",
-                "cost_basis",
-                "industry",
-                "sector",
-                "weight",
-                "size",
-            ],
-        )
-        stock_stats = pd.concat([stock_stats, other])
-    stock_stats = stock_stats.set_index(["ticker"]).reindex()
+    stock_stats = _build_stock_stats(stocks, total_shares)
     print(stock_stats)
     # For display in report
     stock_price_compare = pd.DataFrame(

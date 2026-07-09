@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=C0116, W0511
-"""Collection of useful utilities for warren_bot including getting data from alphavantage and processing
-data structures."""
+"""Collection of useful utilities for warren_bot.
+
+Includes getting data from alphavantage and processing data structures.
+"""
 import datetime
 import logging
 import os
@@ -125,6 +127,7 @@ async def get_current_sec_10k_revenue(cik: str):
     :param cik:
     :return:
     """
+    revenue = -1
     url = f"https://data.sec.gov/api/xbrl/companyfacts/CIK{fix_cik(cik)}.json"
     headers = {
         "user-agent": "Cypress Investment Club simmonsj@jasimmonsv.com",
@@ -168,13 +171,13 @@ async def verify_club_data(data):
     :return data, changed: data is a dict with relevant club data, changed is a <bool> if anything was changed
     """
     changed = False
-    assert "club" in data.keys()
-    assert "name" in data["club"].keys()
-    assert "valuation_dates" in data["club"].keys()
+    assert "club" in data
+    assert "name" in data["club"]
+    assert "valuation_dates" in data["club"]
     # check valuation dates
     assert len(data["club"]["valuation_dates"]) > 0
     # check club stocks
-    assert "club_stocks" in data["club"].keys()
+    assert "club_stocks" in data["club"]
     # check each club stock has verified info
     for stock in data["club"]["club_stocks"].keys():
         cik = fix_cik(data["club"]["club_stocks"][stock]["cik"])
@@ -215,7 +218,6 @@ def draw_club_report(
     reports_dir: str = "./reports/",
 ):
     # pylint: disable=consider-using-f-string, too-many-locals
-
     """Draw monthly club report.
 
     :param filename: <str> Filename to save report
