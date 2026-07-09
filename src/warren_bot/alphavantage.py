@@ -67,9 +67,8 @@ def process_alphavantage_annual_company_info(income_statement, balance_sheet):
     other_liabilities = []
     current_assets = []
     current_liabilities = []
-    count = 0
     # grab stock_ticker
-    for x in range(0, yrs_lookback):  # pylint: disable=unused-variable
+    for _ in range(0, yrs_lookback):  # pylint: disable=unused-variable
         ticker.append(stock_ticker)
     # process balance sheet
     for year in balance_sheet["annualReports"]:
@@ -86,15 +85,12 @@ def process_alphavantage_annual_company_info(income_statement, balance_sheet):
         current_liabilities.append(pd.to_numeric(year["totalCurrentLiabilities"], "coerce"))
         short_term_debt.append(pd.to_numeric(year["shortTermDebt"], "coerce"))
         other_liabilities.append(pd.to_numeric(year["otherCurrentLiabilities"], "coerce"))
-        count += 1
 
     # process income statement
-    count = 0
-    for year in income_statement["annualReports"]:
+    for count, year in enumerate(income_statement["annualReports"]):
         date.append(year["fiscalDateEnding"])
         revenue.append(int(year["totalRevenue"]))
         eps.append(int(year["netIncome"]) / shares_outstanding[count])
-        count += 1
     # convert arrays to indexed Series
     tmp_info = {
         "ticker": pd.Series(ticker, index=date),
@@ -486,11 +482,11 @@ def process_alphavantage_company_prices(data):
     :param data: (Dict) JSON Time series prices from alphavantage
     :return: Dataframe of company stock prices
     """
-    if "Time Series (Daily)" in data.keys():
+    if "Time Series (Daily)" in data:
         pivot = "Time Series (Daily)"
-    elif "Monthly Adjusted Time Series" in data.keys():
+    elif "Monthly Adjusted Time Series" in data:
         pivot = "Monthly Adjusted Time Series"
-    elif "Weekly Adjusted Time Series" in data.keys():
+    elif "Weekly Adjusted Time Series" in data:
         pivot = "Weekly Adjusted Time Series"
     else:
         raise KeyError

@@ -2,6 +2,7 @@
 # pylint: disable=C0116, W0511
 """Discord chatbot entrypoint."""
 import configparser
+import contextlib
 import logging
 import re
 
@@ -73,6 +74,7 @@ async def help_command(message):
 
 
 async def run_stock_report(message):
+    """Build and deliver a stock report for the requested ticker."""
     try:
         ticker = message.content.split(" ", 1)[1]  # Get the stock ticker
         ticker = str.upper(ticker)
@@ -84,10 +86,8 @@ async def run_stock_report(message):
         await stock_analysis.run(message, ticker, KEY)
         await message.channel.send("\n✅ __**Stock Report Finished!**__")
     except Exception as e:
-        try:
+        with contextlib.suppress(discord.errors.Forbidden):
             await message.clear_reaction("⏳")
-        except discord.errors.Forbidden:
-            pass
         await message.add_reaction("🛑")
         await message.reply("\n❌ __**Stock Report Failed!**__")
         raise e
@@ -101,10 +101,8 @@ async def run_club_report(message):
     await message.add_reaction("⏳")
     try:
         await portfolio_analysis.run("./cyic_stocks.csv", "./club_info.json", key=KEY)
-        try:
+        with contextlib.suppress(discord.errors.Forbidden):
             await message.clear_reaction("⏳")
-        except discord.errors.Forbidden:
-            pass
         await message.add_reaction("✅")
     except Exception as e:
         # await message.clear_reaction("⏳")
@@ -124,10 +122,8 @@ async def run_report_bug(message):
     await message.add_reaction("⏳")
     try:
         # Display bug report
-        try:
+        with contextlib.suppress(discord.errors.Forbidden):
             await message.clear_reaction("⏳")
-        except discord.errors.Forbidden:
-            pass
         await message.add_reaction("✅")
     except Exception as e:
         await message.add_reaction("🛑")
@@ -183,6 +179,7 @@ async def on_message(message):
 
 
 async def main():
+    """Run the club report from the command line."""
     await portfolio_analysis.run("./cyic_stocks.csv", "./club_info.json", KEY)
 
 

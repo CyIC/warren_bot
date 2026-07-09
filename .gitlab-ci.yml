@@ -1,0 +1,51 @@
+# CI/CD pipeline for Warren Bot (Python / tox).
+# Runs the tox environments directly so CI matches local dev exactly: tox installs
+# each tool group from pyproject's [dependency-groups] and runs the same commands
+# configured in tox.ini. This avoids drift between CI and `tox -e ...` locally.
+
+stages:
+  - lint
+  - test
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+# Shared setup: install tox (>=4.22 for PEP 735 dependency_groups support).
+# tox builds/installs the package and each env's tool group itself, so poetry
+# is not needed in CI.
+.tox:
+  image: python:3.13-slim
+  cache:
+    key: "$CI_COMMIT_REF_SLUG"
+    paths:
+      - .cache/pip
+      - .tox
+  before_script:
+    - python -m pip install --upgrade pip "tox>=4.22"
+
+flake8:
+  extends: .tox
+  stage: lint
+  script:
+    - tox -e flake8
+
+pylint:
+  extends: .tox
+  stage: lint
+  allow_failure: true
+  script:
+    - tox -e pylint
+
+test:py313:
+  extends: .tox
+  stage: test
+  script:
+    - tox -e py313
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  artifacts:
+    when: always
+    reports:
+      junit: .tox/junit-py313.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: .tox/coverage-py313.xml

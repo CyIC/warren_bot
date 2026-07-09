@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=C0116, W0511
 """Test stock_report module for stock analysis."""
-import unittest
+import asyncio
+import datetime
 import json
-from warren_bot import alphavantage as alv
+import unittest
+from unittest.mock import AsyncMock, MagicMock, patch
 
+from warren_bot import alphavantage as alv
 # under test
 from warren_bot import stock_analysis
+
 
 # pylint: disable=E1136
 
@@ -152,6 +156,112 @@ class StockAnalysisTestCase(unittest.TestCase):
         self.assertIsInstance(charts, list)
         for fig in charts:
             self.assertIsInstance(fig, str)
+
+    def test_run_calls_risk_reward_with_matching_signature(self):
+        """run() must call risk_reward with an argument list its signature accepts.
+
+        Regression: run() passed a 6th (shares-outstanding) argument to risk_reward(),
+        which accepts only 5 parameters. Patching risk_reward with autospec=True enforces
+        the real signature, so a mismatched call raises TypeError.
+        """
+        # GIVEN a message and every collaborator run() touches mocked out (no network)
+        message = MagicMock()
+        message.channel.send = AsyncMock()
+
+        alpha_mock = MagicMock()
+        for getter in (
+            "get_alphavantage_income_statement",
+            "get_alphavantage_balance_sheet",
+            "get_alphavantage_earnings",
+            "get_alphavantage_cash_flow",
+            "get_monthly_alphavantage_company_prices",
+            "get_daily_alphavantage_company_prices",
+        ):
+            setattr(alpha_mock, getter, AsyncMock(return_value=MagicMock()))
+
+        utils_mock = MagicMock()
+        utils_mock.send_message_in_chunks = AsyncMock()
+
+        # WHEN / THEN run() completes without a signature TypeError
+        with patch.object(stock_analysis, "alpha", alpha_mock), patch.object(
+            stock_analysis, "utils", utils_mock
+        ), patch.object(stock_analysis, "past_sales_records", MagicMock()), patch.object(
+            stock_analysis, "past_eps", MagicMock()
+        ), patch.object(
+            stock_analysis, "record_of_stock", MagicMock(return_value=(["msg"], 5.0))
+        ), patch.object(
+            stock_analysis, "trend", MagicMock(return_value=("trend", []))
+        ), patch.object(
+            stock_analysis, "cash_position", MagicMock()
+        ), patch.object(
+            stock_analysis, "revenue_growth", MagicMock()
+        ), patch.object(
+            stock_analysis, "earnings_growth", MagicMock()
+        ), patch.object(
+            stock_analysis, "risk_reward", autospec=True
+        ) as risk_reward_mock:
+            risk_reward_mock.return_value = ("risk_reward", [])
+            asyncio.run(stock_analysis.run(message, "IBM"))
+
+        risk_reward_mock.assert_called_once()
+
+    def test_epoch_seconds(self):
+        """_epoch_seconds converts each datetime to its UNIX epoch seconds."""
+        # GIVEN
+        times = [datetime.datetime(2020, 1, 1), datetime.datetime(2021, 6, 15, 12, 30)]
+
+        # WHEN
+        result = stock_analysis._epoch_seconds(times)
+
+        # THEN
+        self.assertEqual(result, [moment.timestamp() for moment in times])
+
+    def test_epoch_seconds_empty(self):
+        """_epoch_seconds returns an empty list for empty input."""
+        self.assertEqual(stock_analysis._epoch_seconds([]), [])
+
+    def test_predict_values(self):
+        """_predict_values evaluates the prediction at each time's epoch seconds."""
+        # GIVEN a prediction that marks its input so we can prove it saw epoch seconds
+        def prediction(seconds):
+            return seconds + 1
+
+        times = [datetime.datetime(2020, 1, 1), datetime.datetime(2022, 3, 10)]
+
+        # WHEN
+        result = stock_analysis._predict_values(prediction, times)
+
+        # THEN
+        self.assertEqual(result, [moment.timestamp() + 1 for moment in times])
+
+    def test_zone_analysis_success(self):
+        """_zone_analysis returns the predict_low fragment and the up/down ratio."""
+        # WHEN high > low and prices are numeric
+        fragment, ratio = stock_analysis._zone_analysis(100.0, 40.0, 60.0)
+
+        # THEN
+        self.assertIsInstance(fragment, str)
+        self.assertTrue(fragment.startswith("```Lower"))
+        self.assertAlmostEqual(ratio, (100.0 - 60.0) / (60.0 - 40.0))
+
+    def test_zone_analysis_type_error_returns_zero_ratio(self):
+        """A None projected_low makes predict_low raise TypeError -> error fragment, 0 ratio."""
+        # WHEN
+        fragment, ratio = stock_analysis._zone_analysis(100.0, None, 60.0)
+
+        # THEN
+        self.assertIsInstance(fragment, str)
+        self.assertTrue(fragment.startswith("```"))
+        self.assertEqual(ratio, 0)
+
+    def test_zone_analysis_assertion_error_returns_nan(self):
+        """When high <= low predict_low asserts -> NaN fragment, 0 ratio."""
+        # WHEN forcast high is below the projected low
+        fragment, ratio = stock_analysis._zone_analysis(40.0, 100.0, 60.0)
+
+        # THEN
+        self.assertEqual(fragment, "```NaN```")
+        self.assertEqual(ratio, 0)
 
 
 if __name__ == "__main__":
