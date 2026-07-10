@@ -1,0 +1,43 @@
+services:
+  warren-bot:
+    build: .
+    container_name: warren-bot
+    restart: unless-stopped
+    user: "1000:1000"
+    
+    # Environment variables (use .env file)
+    env_file: .env
+    
+    # Mount volumes for persistent data and configuration
+    volumes:
+      - ./club_info.json:/app/club_info.json:ro
+      - ./club_stocks.csv:/app/club_stocks.csv:ro
+      - ./data:/app/data
+      - ./logs:/app/logs
+    
+    # Health check
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import warren_bot; warren_bot.health_check()" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Resource limits (adjust as needed)
+    mem_limit: 512m
+    cpus: 0.5
+    mem_reservation: 256m
+
+    stop_grace_period: 10s
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Networks (optional)
+networks:
+  default:
+    name: warren-bot-network

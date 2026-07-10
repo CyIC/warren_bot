@@ -72,6 +72,27 @@ def _build_stock_stats(stocks: pd.DataFrame, total_shares: float) -> pd.DataFram
     return stock_stats.set_index(["ticker"]).reindex()
 
 
+async def _load_club_data(club_info_file):
+    """Load club info, normalize it, and persist any changes back to disk.
+
+    The club info file may be mounted read-only (secure container); the normalized data is
+    written back when possible, but a read-only mount must not fail the report.
+
+    :param club_info_file: path to the club_info.json file
+    :return: normalized club_data dict
+    """
+    with open(club_info_file, encoding="utf-8") as json_data:
+        club_data_json = json.load(json_data)
+    club_data, changed = await util.verify_club_data(club_data_json)
+    if changed:
+        try:
+            with open(club_info_file, "w", encoding="utf-8") as f:
+                json.dump(club_data, f)
+        except OSError as exc:
+            logger.warning("Could not persist updated club info to %s: %s", club_info_file, exc)
+    return club_data
+
+
 async def run(club_stocks_file, club_info_file):
     """Execute club analysis report.
 
@@ -86,12 +107,7 @@ async def run(club_stocks_file, club_info_file):
     )
     total_shares = stocks["shares"].sum()
     # get club info / check and update club info
-    with open(club_info_file, encoding="utf-8") as json_data:
-        club_data_json = json.load(json_data)
-    club_data, changed = await util.verify_club_data(club_data_json)
-    if changed:
-        with open(club_info_file, "w", encoding="utf-8") as f:
-            json.dump(club_data, f)
+    club_data = await _load_club_data(club_info_file)
     # get club meeting dates
     meeting_dates = pd.Series(pd.to_datetime(list(club_data["club"]["valuation_dates"])))
     # Compare the last meeting day == today - offset to last business day
@@ -100,7 +116,7 @@ async def run(club_stocks_file, club_info_file):
     # Read in stock prices, else get new prices from yfinance
     try:
         # check if stocks.pkl is old data
-        local_stock_price_file = "stocks.pkl"
+        local_stock_price_file = util.data_path("stocks.pkl")
         if str(dt.datetime.today().date()) != time.strftime(
             "%Y-%m-%d", time.gmtime(os.path.getmtime(local_stock_price_file))
         ):
@@ -138,6 +154,7 @@ async def run(club_stocks_file, club_info_file):
     days_back = 180
     stock_charts = []
     for ticker in prices["ticker"].unique().tolist():
+        chart_path = util.data_path("charts", "{}_chart.png".format(ticker))
         stock = prices[prices["ticker"] == ticker].sort_index(ascending=True)
         stock = stock[-days_back:]
         other_plots = [
@@ -159,7 +176,7 @@ async def run(club_stocks_file, club_info_file):
             volume_panel=2,
             ylabel_lower="Volume",
             addplot=other_plots,
-            savefig="charts/{}_chart.png".format(ticker),
+            savefig=chart_path,
             vlines={
                 "vlines": meeting_days.tolist(),
                 "linestyle": "dotted",
@@ -169,7 +186,7 @@ async def run(club_stocks_file, club_info_file):
             },
             # hlines=dict(hlines=stock_stats['avg_cost'][ticker],linestyle='dashed',colors='r',linewidths=1)
         )
-        stock_charts.append("charts/{}_chart.png".format(ticker))
+        stock_charts.append(chart_path)
 
     # Build club Performance Graph
     club_stats = pd.DataFrame()

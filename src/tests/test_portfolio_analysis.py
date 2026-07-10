@@ -1,7 +1,13 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=C0116, W0511
 """Test module for portfolio analysis."""
+import asyncio
+import json
+import os
+import shutil
+import tempfile
 import unittest
+from unittest import mock
 
 import pandas as pd
 
@@ -66,6 +72,53 @@ class PortfolioAnalysisTestCase(unittest.TestCase):
         self.assertAlmostEqual(result.iloc[0]["BBB"], 20.0)
         self.assertAlmostEqual(result.iloc[1]["AAA"], 11.0)
         self.assertAlmostEqual(result.iloc[1]["BBB"], 19.0)
+
+    def test_load_club_data_persists_when_changed(self):
+        """_load_club_data writes normalized data back when verify_club_data reports a change."""
+        tmp = tempfile.mkdtemp()
+        try:
+            path = os.path.join(tmp, "club_info.json")
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump({"club": {}}, f)
+            normalized = {"club": {"normalized": True}}
+            with mock.patch.object(
+                portfolio_analysis.util,
+                "verify_club_data",
+                new=mock.AsyncMock(return_value=(normalized, True)),
+            ):
+                result = asyncio.run(portfolio_analysis._load_club_data(path))
+            # THEN the normalized data is returned and persisted to disk
+            self.assertEqual(result, normalized)
+            with open(path, encoding="utf-8") as f:
+                self.assertEqual(json.load(f), normalized)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_load_club_data_tolerates_readonly_file(self):
+        """_load_club_data returns data without raising when the file can't be written."""
+        tmp = tempfile.mkdtemp()
+        try:
+            path = os.path.join(tmp, "club_info.json")
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump({"club": {}}, f)
+            normalized = {"club": {"normalized": True}}
+            real_open = open
+
+            def readonly_open(file, mode="r", *args, **kwargs):
+                if "w" in mode:  # simulate a read-only mount on the write-back
+                    raise OSError("Read-only file system")
+                return real_open(file, mode, *args, **kwargs)
+
+            with mock.patch.object(
+                portfolio_analysis.util,
+                "verify_club_data",
+                new=mock.AsyncMock(return_value=(normalized, True)),
+            ), mock.patch("builtins.open", side_effect=readonly_open):
+                result = asyncio.run(portfolio_analysis._load_club_data(path))
+            # THEN the failed write is swallowed and the normalized data still returned
+            self.assertEqual(result, normalized)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
 
 
 if __name__ == "__main__":
