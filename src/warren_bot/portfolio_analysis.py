@@ -14,7 +14,7 @@ from pandas.tseries.offsets import BDay
 
 from warren_bot import analysis
 from warren_bot import utilities as util
-from warren_bot.alphavantage import download_stocks
+from warren_bot.yfinance_integration import download_stocks
 
 logger = logging.getLogger("discord")
 logger.setLevel(logging.DEBUG)
@@ -72,7 +72,7 @@ def _build_stock_stats(stocks: pd.DataFrame, total_shares: float) -> pd.DataFram
     return stock_stats.set_index(["ticker"]).reindex()
 
 
-async def run(club_stocks_file, club_info_file, key):
+async def run(club_stocks_file, club_info_file):
     """Execute club analysis report.
 
     :return:
@@ -97,18 +97,18 @@ async def run(club_stocks_file, club_info_file, key):
     # Compare the last meeting day == today - offset to last business day
     if meeting_dates.iloc[-1].date() != (pd.to_datetime(dt.datetime.today() - BDay())).date():
         meeting_dates = pd.concat([meeting_dates, pd.Series(pd.to_datetime(dt.datetime.today() - BDay()))])
-    # Read in stock prices, else get new prices from alphavantage
+    # Read in stock prices, else get new prices from yfinance
     try:
         # check if stocks.pkl is old data
         local_stock_price_file = "stocks.pkl"
         if str(dt.datetime.today().date()) != time.strftime(
             "%Y-%m-%d", time.gmtime(os.path.getmtime(local_stock_price_file))
         ):
-            prices = await download_stocks(stocks, key)
+            prices = await download_stocks(stocks)
         else:
             prices = pd.read_pickle(local_stock_price_file)
     except (FileNotFoundError, KeyError):
-        prices = await download_stocks(stocks, key)
+        prices = await download_stocks(stocks)
     close = prices.reset_index().pivot(index="date", columns="ticker", values="close")
 
     # Build table for meeting valuation dates

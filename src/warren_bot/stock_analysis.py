@@ -11,8 +11,8 @@ import pandas as pd
 from dateutil.relativedelta import relativedelta
 from prettytable import PrettyTable
 
-from warren_bot import alphavantage as alpha
 from warren_bot import utilities as utils
+from warren_bot import yfinance_integration as yf_api
 
 YRS_LOOKBACK = 5
 logger = logging.getLogger("discord")
@@ -947,22 +947,28 @@ d) {dividend_low:.4f} to 1```""".format(
     return msg, files
 
 
-async def run(message, ticker, alphavantage_key=None):
+async def run(message, ticker):
     """Run stock analysis.
 
     :param message: <discord.message> Discord message object to make replys to
     :param ticker: Company stock ticker
-    :param alphavantage_key: Alphavantage API key
     :return:
     """
     # Get Company Data
-    income_statement = await alpha.get_alphavantage_income_statement(ticker, alphavantage_key)
-    balance_sheet = await alpha.get_alphavantage_balance_sheet(ticker, alphavantage_key)
-    earnings = await alpha.get_alphavantage_earnings(ticker, alphavantage_key)
-    cash_flow = await alpha.get_alphavantage_cash_flow(ticker, alphavantage_key)
+    income_statement = yf_api.get_yfinance_income_statement(ticker)
+    balance_sheet = yf_api.get_yfinance_balance_sheet(ticker)
+    earnings = yf_api.get_yfinance_earnings(ticker)
+    cash_flow = yf_api.get_yfinance_cash_flow(ticker)
     # Get company stock prices
-    monthly_company_prices = await alpha.get_monthly_alphavantage_company_prices(ticker, alphavantage_key)
-    daily_company_prices = await alpha.get_daily_alphavantage_company_prices(ticker, alphavantage_key)
+    monthly_company_prices = yf_api.get_monthly_yfinance_company_prices(ticker)
+    daily_company_prices = yf_api.get_daily_yfinance_company_prices(ticker)
+
+    # Guard: the report requires earnings history. get_yfinance_earnings returns empty
+    # DataFrames when a series is unavailable (unknown ticker or no reported EPS);
+    # building the report off empty frames would crash downstream, so bail out early.
+    if earnings["annualEarnings"].empty or earnings["quarterlyEarnings"].empty:
+        await message.channel.send(f"No earnings data available for {ticker}.")
+        return
 
     # Build and send report components
     await utils.send_message_in_chunks(message.channel, past_sales_records(income_statement["annualReports"]))

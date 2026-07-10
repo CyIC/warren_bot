@@ -14,7 +14,6 @@ from warren_bot import stock_analysis
 config = configparser.ConfigParser()
 config.read("../../bot_config.ini")
 token = config["discord"]["token"]
-KEY = config["alphavantage"]["key"]
 LOGGER = logging.getLogger("discord")
 
 DEBUG = False
@@ -83,7 +82,7 @@ async def run_stock_report(message):
         return
     await message.add_reaction("⏳")
     try:
-        await stock_analysis.run(message, ticker, KEY)
+        await stock_analysis.run(message, ticker)
         await message.channel.send("\n✅ __**Stock Report Finished!**__")
     except Exception as e:
         with contextlib.suppress(discord.errors.Forbidden):
@@ -100,7 +99,7 @@ async def run_club_report(message):
     """
     await message.add_reaction("⏳")
     try:
-        await portfolio_analysis.run("./cyic_stocks.csv", "./club_info.json", key=KEY)
+        await portfolio_analysis.run("./cyic_stocks.csv", "./club_info.json")
         with contextlib.suppress(discord.errors.Forbidden):
             await message.clear_reaction("⏳")
         await message.add_reaction("✅")
@@ -180,7 +179,7 @@ async def on_message(message):
 
 async def main():
     """Run the club report from the command line."""
-    await portfolio_analysis.run("./cyic_stocks.csv", "./club_info.json", KEY)
+    await portfolio_analysis.run("./cyic_stocks.csv", "./club_info.json")
 
 
 if __name__ == "__main__":
