@@ -4,5 +4,3 @@ run = TODO
 token = *discord token*
 discordAppID = *discord App ID*
 discordPublicKey = *discord API key*
-[alphavantage]
-key = *alphavantage API key*

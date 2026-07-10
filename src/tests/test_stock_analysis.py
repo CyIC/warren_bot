@@ -7,12 +7,73 @@ import json
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from warren_bot import alphavantage as alv
+import pandas as pd
+
 # under test
 from warren_bot import stock_analysis
 
 
 # pylint: disable=E1136
+def _load_reports(path):
+    """Load an alphavantage-style statement JSON fixture into the report DataFrame contract.
+
+    Builds {'annualReports', 'quarterlyReports'} of date-indexed numeric DataFrames, matching
+    the structure the report functions consume (and that yfinance_integration now produces).
+    """
+    with open(path, encoding="utf-8") as file:
+        data = json.load(file)
+    reports = {}
+    for period in ("annualReports", "quarterlyReports"):
+        frame = pd.DataFrame(data[period]).set_index("fiscalDateEnding")
+        frame.index = pd.to_datetime(frame.index)
+        frame.sort_index(ascending=True, inplace=True)
+        for column in frame.columns:
+            frame[column] = pd.to_numeric(frame[column], errors="coerce")
+        reports[period] = frame
+    return reports
+
+
+def _load_earnings(path):
+    """Load an alphavantage-style earnings JSON fixture into the report DataFrame contract."""
+    with open(path, encoding="utf-8") as file:
+        data = json.load(file)
+    earnings = {}
+    for period in ("annualEarnings", "quarterlyEarnings"):
+        frame = pd.DataFrame(data[period]).set_index("fiscalDateEnding")
+        frame.index = pd.to_datetime(frame.index)
+        frame.sort_index(ascending=True, inplace=True)
+        for column in frame.columns:
+            if column != "reportedDate":
+                frame[column] = pd.to_numeric(frame[column], errors="coerce")
+        earnings[period] = frame
+    return earnings
+
+
+def _load_prices(path):
+    """Load an alphavantage-style time-series JSON fixture into the price DataFrame contract."""
+    with open(path, encoding="utf-8") as file:
+        data = json.load(file)
+    pivots = ("Time Series (Daily)", "Monthly Adjusted Time Series", "Weekly Adjusted Time Series")
+    pivot = next(key for key in data if key in pivots)
+    prices = pd.DataFrame(data[pivot]).T.rename(
+        columns={
+            "1. open": "open",
+            "2. high": "high",
+            "3. low": "low",
+            "4. close": "close",
+            "5. adjusted close": "adj_close",
+            "6. volume": "volume",
+            "7. dividend amount": "dividend_amt",
+            "8. split coefficient": "split coefficient",
+        }
+    )
+    prices.index.name = "date"
+    prices.index = pd.to_datetime(prices.index)
+    prices.sort_index(ascending=True, inplace=True)
+    for column in ("open", "high", "low", "close", "adj_close", "volume", "dividend_amt"):
+        prices[column] = pd.to_numeric(prices[column])
+    prices["ticker"] = data["Meta Data"]["2. Symbol"]
+    return prices
 
 
 class StockAnalysisTestCase(unittest.TestCase):
@@ -21,20 +82,10 @@ class StockAnalysisTestCase(unittest.TestCase):
     def test_record_of_stock(self):
         """Test successfull execution of record of stock method."""
         # GIVEN
-        # Prepare files
-        with open("./src/tests/IBM.earnings.json", encoding="utf-8") as file:
-            eps_data = json.load(file)
-        with open("./src/tests/IBM.income_statement.json", encoding="utf-8") as file:
-            income_data = json.load(file)
-        with open("./src/tests/IBM.daily_adjusted.json", encoding="utf-8") as file:
-            daily_data = json.load(file)
-        with open("./src/tests/IBM.monthly_adjusted.json", encoding="utf-8") as file:
-            monthly_data = json.load(file)
-        # Prepare data sources
-        eps = alv.process_alphavantage_earnings(eps_data)
-        income_statement = alv.process_alphavantage_income_statement(income_data)
-        daily_prices = alv.process_alphavantage_company_prices(daily_data)
-        monthly_prices = alv.process_alphavantage_company_prices(monthly_data)
+        eps = _load_earnings("./src/tests/IBM.earnings.json")
+        income_statement = _load_reports("./src/tests/IBM.income_statement.json")
+        daily_prices = _load_prices("./src/tests/IBM.daily_adjusted.json")
+        monthly_prices = _load_prices("./src/tests/IBM.monthly_adjusted.json")
 
         # WHEN
         msg, high_yield = stock_analysis.record_of_stock(eps, income_statement, daily_prices, monthly_prices)
@@ -48,17 +99,9 @@ class StockAnalysisTestCase(unittest.TestCase):
     def test_trend(self):
         """Test successfull execution of trend method."""
         # GIVEN
-        # Prepare files
-        with open("./src/tests/IBM.income_statement.json", encoding="utf-8") as file:
-            income_data = json.load(file)
-        with open("./src/tests/IBM.monthly_adjusted.json", encoding="utf-8") as file:
-            monthly_data = json.load(file)
-        with open("./src/tests/IBM.earnings.json", encoding="utf-8") as file:
-            eps_data = json.load(file)
-        # Prepare data sources
-        eps = alv.process_alphavantage_earnings(eps_data)
-        income_statement = alv.process_alphavantage_income_statement(income_data)
-        monthly_prices = alv.process_alphavantage_company_prices(monthly_data)
+        income_statement = _load_reports("./src/tests/IBM.income_statement.json")
+        monthly_prices = _load_prices("./src/tests/IBM.monthly_adjusted.json")
+        eps = _load_earnings("./src/tests/IBM.earnings.json")
 
         # WHEN
         msg, files = stock_analysis.trend(income_statement, eps, monthly_prices)
@@ -72,11 +115,7 @@ class StockAnalysisTestCase(unittest.TestCase):
     def test_cash_position(self):
         """Test cash position printing module."""
         # GIVEN
-        # Prepare files
-        with open("./src/tests/IBM.balance_sheet.json", encoding="utf-8") as file:
-            balance_data = json.load(file)
-        # Prepare data sources
-        balance_sheet = alv.process_alphavantage_balance_sheet(balance_data)
+        balance_sheet = _load_reports("./src/tests/IBM.balance_sheet.json")
 
         # WHEN
         msg = stock_analysis.cash_position(balance_sheet)
@@ -89,24 +128,11 @@ class StockAnalysisTestCase(unittest.TestCase):
     def test_revenue_growth(self):
         """Test cash position revenue_growth module."""
         # GIVEN
-        # Prepare files
-        with open("./src/tests/IBM.income_statement.json", encoding="utf-8") as file:
-            income_data = json.load(file)
-        with open("./src/tests/IBM.daily_adjusted.json", encoding="utf-8") as file:
-            daily_data = json.load(file)
-        with open("./src/tests/IBM.cash_flow.json", encoding="utf-8") as file:
-            cash_data = json.load(file)
-        with open("./src/tests/IBM.earnings.json", encoding="utf-8") as file:
-            eps_data = json.load(file)
-        with open("./src/tests/IBM.balance_sheet.json", encoding="utf-8") as file:
-            balance_data = json.load(file)
-
-        # Prepare data sources
-        income_statement = alv.process_alphavantage_income_statement(income_data)
-        daily_prices = alv.process_alphavantage_company_prices(daily_data)
-        cash_flow = alv.process_alphavantage_cash_flow(cash_data)
-        earnings = alv.process_alphavantage_earnings(eps_data)
-        balance_sheet = alv.process_alphavantage_balance_sheet(balance_data)
+        income_statement = _load_reports("./src/tests/IBM.income_statement.json")
+        daily_prices = _load_prices("./src/tests/IBM.daily_adjusted.json")
+        cash_flow = _load_reports("./src/tests/IBM.cash_flow.json")
+        earnings = _load_earnings("./src/tests/IBM.earnings.json")
+        balance_sheet = _load_reports("./src/tests/IBM.balance_sheet.json")
 
         # WHEN
         msg = stock_analysis.revenue_growth(
@@ -123,24 +149,10 @@ class StockAnalysisTestCase(unittest.TestCase):
     def test_risk_reward(self):
         """Test cash position risk_reward module."""
         # GIVEN
-        # Prepare files
-        with open("./src/tests/IBM.income_statement.json", encoding="utf-8") as file:
-            income_data = json.load(file)
-        with open("./src/tests/IBM.daily_adjusted.json", encoding="utf-8") as file:
-            daily_data = json.load(file)
-        with open("./src/tests/IBM.monthly_adjusted.json", encoding="utf-8") as file:
-            monthly_data = json.load(file)
-        with open("./src/tests/IBM.earnings.json", encoding="utf-8") as file:
-            eps_data = json.load(file)
-        # with open("./src/tests/IBM.balance_sheet.json", encoding="utf-8") as file:
-        #     balance_data = json.load(file)
-
-        # Prepare data sources
-        income_statement = alv.process_alphavantage_income_statement(income_data)
-        daily_prices = alv.process_alphavantage_company_prices(daily_data)
-        monthly_prices = alv.process_alphavantage_company_prices(monthly_data)
-        earnings = alv.process_alphavantage_earnings(eps_data)
-        # balance_sheet = alv.process_alphavantage_balance_sheet(balance_data)
+        income_statement = _load_reports("./src/tests/IBM.income_statement.json")
+        daily_prices = _load_prices("./src/tests/IBM.daily_adjusted.json")
+        monthly_prices = _load_prices("./src/tests/IBM.monthly_adjusted.json")
+        earnings = _load_earnings("./src/tests/IBM.earnings.json")
 
         # WHEN
         msg, charts = stock_analysis.risk_reward(
@@ -149,7 +161,6 @@ class StockAnalysisTestCase(unittest.TestCase):
             monthly_prices,
             income_statement,
             earnings["quarterlyEarnings"]["reportedEPS"][-1],  # stand in for highest EPS
-            # balance_sheet["annualReports"]["commonStockSharesOutstanding"][-1],
         )
         # THEN
         self.assertIsInstance(msg, str)
@@ -164,26 +175,35 @@ class StockAnalysisTestCase(unittest.TestCase):
         which accepts only 5 parameters. Patching risk_reward with autospec=True enforces
         the real signature, so a mismatched call raises TypeError.
         """
-        # GIVEN a message and every collaborator run() touches mocked out (no network)
+        # GIVEN a message and every collaborator run() touches mocked out (no network).
+        # yfinance getters are synchronous. get_yfinance_earnings returns non-empty earnings
+        # frames so the .empty guard passes and risk_reward is reached (MagicMock subscripts
+        # keep the earnings['quarterlyEarnings']['reportedEPS'][-1] access from touching pandas).
         message = MagicMock()
         message.channel.send = AsyncMock()
 
-        alpha_mock = MagicMock()
+        yf_mock = MagicMock()
         for getter in (
-            "get_alphavantage_income_statement",
-            "get_alphavantage_balance_sheet",
-            "get_alphavantage_earnings",
-            "get_alphavantage_cash_flow",
-            "get_monthly_alphavantage_company_prices",
-            "get_daily_alphavantage_company_prices",
+            "get_yfinance_income_statement",
+            "get_yfinance_balance_sheet",
+            "get_yfinance_cash_flow",
+            "get_monthly_yfinance_company_prices",
+            "get_daily_yfinance_company_prices",
         ):
-            setattr(alpha_mock, getter, AsyncMock(return_value=MagicMock()))
+            setattr(yf_mock, getter, MagicMock(return_value=MagicMock()))
+        non_empty_annual = MagicMock()
+        non_empty_annual.empty = False
+        non_empty_quarterly = MagicMock()
+        non_empty_quarterly.empty = False
+        yf_mock.get_yfinance_earnings = MagicMock(
+            return_value={"annualEarnings": non_empty_annual, "quarterlyEarnings": non_empty_quarterly}
+        )
 
         utils_mock = MagicMock()
         utils_mock.send_message_in_chunks = AsyncMock()
 
         # WHEN / THEN run() completes without a signature TypeError
-        with patch.object(stock_analysis, "alpha", alpha_mock), patch.object(
+        with patch.object(stock_analysis, "yf_api", yf_mock), patch.object(
             stock_analysis, "utils", utils_mock
         ), patch.object(stock_analysis, "past_sales_records", MagicMock()), patch.object(
             stock_analysis, "past_eps", MagicMock()
@@ -204,6 +224,50 @@ class StockAnalysisTestCase(unittest.TestCase):
             asyncio.run(stock_analysis.run(message, "IBM"))
 
         risk_reward_mock.assert_called_once()
+
+    def test_run_bails_out_when_quarterly_earnings_missing(self):
+        """run() warns and returns early when earnings data is incomplete.
+
+        Regression: earnings['quarterlyEarnings'] can be empty (yfinance returns an empty
+        DataFrame when there is no quarterly data), and building the report off it would crash
+        on earnings['quarterlyEarnings']['reportedEPS'][-1]. run() must bail out first.
+        """
+        # GIVEN earnings present annually but an empty quarterly frame (the missing-data case)
+        message = MagicMock()
+        message.channel.send = AsyncMock()
+
+        yf_mock = MagicMock()
+        for getter in (
+            "get_yfinance_income_statement",
+            "get_yfinance_balance_sheet",
+            "get_yfinance_cash_flow",
+            "get_monthly_yfinance_company_prices",
+            "get_daily_yfinance_company_prices",
+        ):
+            setattr(yf_mock, getter, MagicMock(return_value=MagicMock()))
+        yf_mock.get_yfinance_earnings = MagicMock(
+            return_value={
+                "annualEarnings": pd.DataFrame({"reportedEPS": [1.0]}),
+                "quarterlyEarnings": pd.DataFrame(),  # empty -> triggers the guard
+            }
+        )
+
+        utils_mock = MagicMock()
+        utils_mock.send_message_in_chunks = AsyncMock()
+
+        # WHEN
+        with patch.object(stock_analysis, "yf_api", yf_mock), patch.object(
+            stock_analysis, "utils", utils_mock
+        ), patch.object(stock_analysis, "record_of_stock") as record_mock, patch.object(
+            stock_analysis, "risk_reward"
+        ) as risk_reward_mock:
+            asyncio.run(stock_analysis.run(message, "AAPL"))
+
+        # THEN it warned the channel and never reached the earnings-dependent report sections
+        message.channel.send.assert_awaited_once()
+        self.assertIn("AAPL", str(message.channel.send.await_args))
+        record_mock.assert_not_called()
+        risk_reward_mock.assert_not_called()
 
     def test_epoch_seconds(self):
         """_epoch_seconds converts each datetime to its UNIX epoch seconds."""
