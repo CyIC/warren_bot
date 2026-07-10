@@ -4,6 +4,7 @@
 
 Includes getting data from alphavantage and processing data structures.
 """
+import configparser
 import datetime
 import logging
 import os
@@ -15,6 +16,48 @@ from jinja2 import Environment, select_autoescape, FileSystemLoader
 from xhtml2pdf import pisa
 
 import warren_bot
+
+
+def data_path(*parts) -> str:
+    """Resolve a writable output path under the configured data directory.
+
+    Reads the WARREN_DATA_DIR environment variable (default: current working directory) so
+    file output works on a read-only container root where only a mounted data volume is
+    writable. Ensures the returned path's parent directory exists.
+
+    :param parts: path components joined under the data dir (e.g. "charts", "AAPL_chart.png")
+    :return: path string with its parent directory created
+    """
+    base = os.environ.get("WARREN_DATA_DIR", ".")
+    path = os.path.join(base, *parts)
+    parent = os.path.dirname(path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    return path
+
+
+def load_discord_token() -> str:
+    """Resolve the Discord bot token from the environment, a secret file, or the legacy INI.
+
+    Resolution order (first match wins):
+      1. DISCORD_TOKEN environment variable (e.g. --env-file .env)
+      2. the file named by DISCORD_TOKEN_FILE (Docker/Swarm secret at /run/secrets/...)
+      3. the [discord] token in bot_config.ini in the working directory (local dev fallback)
+
+    :return: the Discord bot token
+    :raises KeyError: if no token is found in any source
+    """
+    token = os.environ.get("DISCORD_TOKEN")
+    if token:
+        return token
+    token_file = os.environ.get("DISCORD_TOKEN_FILE")
+    if token_file:
+        with open(token_file, encoding="utf-8") as handle:
+            return handle.read().strip()
+    parser = configparser.ConfigParser()
+    parser.read("bot_config.ini")
+    return parser["discord"]["token"]
+
 
 # noqa: W503
 color_scheme = {
@@ -215,7 +258,7 @@ def draw_club_report(
     stock_price_compare: pd.DataFrame,
     stock_charts: list,
     club_data: dict,
-    reports_dir: str = "./reports/",
+    reports_dir: str = None,
 ):
     # pylint: disable=consider-using-f-string, too-many-locals
     """Draw monthly club report.
@@ -229,6 +272,10 @@ def draw_club_report(
     :param reports_dir: <str> optional directory to save reports to
     :return:
     """
+    # Default to a writable data-dir location and create it (read-only container root safe)
+    if reports_dir is None:
+        reports_dir = data_path("reports")
+        os.makedirs(reports_dir, exist_ok=True)
     # Sanity checks for files and folders
     assert os.path.isdir(reports_dir)
     assert os.path.isdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), "resources"))

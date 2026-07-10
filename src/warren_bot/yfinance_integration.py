@@ -7,6 +7,8 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 
+from warren_bot import utilities as util
+
 LOGGER = logging.getLogger()
 
 # Map alphavantage field names (which the report code consumes) to the candidate yfinance
@@ -700,5 +702,5 @@ async def download_stocks(stocks: list):
             prices = pd.concat([tmp_stock, prices])
 
     # Save to pickle for compatibility
-    prices.to_pickle("stocks.pkl")
+    prices.to_pickle(util.data_path("stocks.pkl"))
     return prices

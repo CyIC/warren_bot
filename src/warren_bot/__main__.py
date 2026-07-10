@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=C0116, W0511
 """Discord chatbot entrypoint."""
-import configparser
 import contextlib
 import logging
 import re
@@ -10,10 +9,9 @@ import discord
 
 from warren_bot import portfolio_analysis
 from warren_bot import stock_analysis
+from warren_bot import utilities as utils
 
-config = configparser.ConfigParser()
-config.read("../../bot_config.ini")
-token = config["discord"]["token"]
+token = utils.load_discord_token()
 LOGGER = logging.getLogger("discord")
 
 DEBUG = False

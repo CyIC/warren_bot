@@ -310,8 +310,9 @@ def trend(
     eps_fig.set_ylabel("EPS", color="tab:blue")
     eps_fig.plot(quarterly_eps["reportedEPS"])
     # Price high/low
-    plt.savefig("./eps_fig.jpg")
-    files.append("./eps_fig.jpg")
+    eps_fig_path = utils.data_path("eps_fig.jpg")
+    plt.savefig(eps_fig_path)
+    files.append(eps_fig_path)
 
     # Plot Stock Highs and Lows
     monthly_company_prices["avg_high"] = monthly_company_prices["high"].rolling(4).mean()
@@ -322,8 +323,9 @@ def trend(
         xlabel="Date",
         ylabel="USD",
     )
-    plt.savefig("./stock_high_low.jpg")
-    files.append("./stock_high_low.jpg")
+    stock_high_low_path = utils.data_path("stock_high_low.jpg")
+    plt.savefig(stock_high_low_path)
+    files.append(stock_high_low_path)
     return msg, files
 
 
@@ -823,8 +825,9 @@ def risk_reward(
     quarterly_eps.index = pd.to_datetime(time)
     quarterly_eps.sort_index(ascending=True, inplace=True)
     quarterly_eps.plot()
-    plt.savefig("./eps_pred_fig.jpg")
-    files.append("./eps_pred_fig.jpg")
+    eps_pred_fig_path = utils.data_path("eps_pred_fig.jpg")
+    plt.savefig(eps_pred_fig_path)
+    files.append(eps_pred_fig_path)
     forcast_high = pe_high.mean() * est_high_eps
 
     # Build High Revenue Prediction
@@ -843,8 +846,9 @@ def risk_reward(
     quarterly_revenue.sort_index(ascending=True, inplace=True)
     # Plot revenue and prediction
     quarterly_revenue.plot()
-    plt.savefig("./revenue_pred_fig.jpg")
-    files.append("./revenue_pred_fig.jpg")
+    revenue_pred_fig_path = utils.data_path("revenue_pred_fig.jpg")
+    plt.savefig(revenue_pred_fig_path)
+    files.append(revenue_pred_fig_path)
 
     # Sales to EPS Prediction
     # print('PE High Mean: {}'.format(pe_high.mean()))
@@ -874,8 +878,9 @@ def risk_reward(
     low_prices.index = pd.to_datetime(time)
     low_prices.sort_index(ascending=True, inplace=True)
     low_prices.plot()
-    plt.savefig("./low_price_pred_fig.jpg")
-    files.append("./low_price_pred_fig.jpg")
+    low_price_pred_fig_path = utils.data_path("low_price_pred_fig.jpg")
+    plt.savefig(low_price_pred_fig_path)
+    files.append(low_price_pred_fig_path)
 
     # Build High Price Predictions
     # Calculate linear regression high
@@ -892,8 +897,9 @@ def risk_reward(
     high_prices.index = pd.to_datetime(time)
     high_prices.sort_index(ascending=True, inplace=True)
     high_prices.plot()
-    plt.savefig("./high_price_pred_fig.jpg")
-    files.append("./high_price_pred_fig.jpg")
+    high_price_pred_fig_path = utils.data_path("high_price_pred_fig.jpg")
+    plt.savefig(high_price_pred_fig_path)
+    files.append(high_price_pred_fig_path)
 
     # Calculate severe low
     severe_low = daily_prices["low"].min()
