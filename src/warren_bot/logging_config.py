@@ -46,7 +46,7 @@ LOGGING = {
     "handlers": {
         "stdout": {
             "class": "logging.StreamHandler",
-            "stream": "extr://sysstdout",
+            "stream": "ext://sys.stdout",
             "formatter": "json",
         }
     },
